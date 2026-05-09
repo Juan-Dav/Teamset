@@ -6,7 +6,7 @@ import { pool } from "../../config/db";
  * /api/performance:
  *   get:
  *     summary: Obtener todos los registros de rendimiento
- *     tags: [Performance]
+ *     tags: [Rendimiento]
  *     responses:
  *       200:
  *         description: Lista de registros de rendimiento
@@ -15,8 +15,8 @@ export const getPerformance = async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.query(`
       SELECT tp.*, t.name as team_name 
-      FROM team_performance tp 
-      JOIN teams t ON tp.team_id = t.id 
+      FROM rendimiento_equipo tp 
+      JOIN equipos t ON tp.team_id = t.id 
       ORDER BY tp.performance_date DESC
     `);
     res.json(rows);
@@ -30,7 +30,7 @@ export const getPerformance = async (req: Request, res: Response) => {
  * /api/performance/team/{teamId}:
  *   get:
  *     summary: Obtener rendimiento por equipo
- *     tags: [Performance]
+ *     tags: [Rendimiento]
  *     parameters:
  *       - in: path
  *         name: teamId
@@ -43,7 +43,7 @@ export const getPerformance = async (req: Request, res: Response) => {
  */
 export const getPerformanceByTeam = async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM team_performance WHERE team_id = ? ORDER BY performance_date DESC", [req.params.teamId]);
+    const [rows] = await pool.query("SELECT * FROM rendimiento_equipo WHERE team_id = ? ORDER BY performance_date DESC", [req.params.teamId]);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });
@@ -55,7 +55,7 @@ export const getPerformanceByTeam = async (req: Request, res: Response) => {
  * /api/performance:
  *   post:
  *     summary: Crear registro de rendimiento
- *     tags: [Performance]
+ *     tags: [Rendimiento]
  *     requestBody:
  *       required: true
  *       content:
@@ -92,7 +92,7 @@ export const createPerformance = async (req: Request, res: Response) => {
     const { team_id, performance_date, court_performance, serve_performance, attack_performance, block_performance, defense_performance, notes } = req.body;
     const overall_rating = ((court_performance + serve_performance + attack_performance + block_performance + defense_performance) / 5).toFixed(1);
     const [result]: any = await pool.query(
-      "INSERT INTO team_performance (team_id, performance_date, court_performance, serve_performance, attack_performance, block_performance, defense_performance, overall_rating, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO rendimiento_equipo (team_id, performance_date, court_performance, serve_performance, attack_performance, block_performance, defense_performance, overall_rating, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [team_id, performance_date, court_performance, serve_performance, attack_performance, block_performance, defense_performance, overall_rating, notes]
     );
     res.status(201).json({ id: result.insertId, team_id, overall_rating });
@@ -106,7 +106,7 @@ export const createPerformance = async (req: Request, res: Response) => {
  * /api/performance/{id}:
  *   put:
  *     summary: Actualizar registro de rendimiento
- *     tags: [Performance]
+ *     tags: [Rendimiento]
  *     parameters:
  *       - in: path
  *         name: id
@@ -144,7 +144,7 @@ export const updatePerformance = async (req: Request, res: Response) => {
     const { performance_date, court_performance, serve_performance, attack_performance, block_performance, defense_performance, notes } = req.body;
     const overall_rating = ((court_performance + serve_performance + attack_performance + block_performance + defense_performance) / 5).toFixed(1);
     await pool.query(
-      "UPDATE team_performance SET performance_date = ?, court_performance = ?, serve_performance = ?, attack_performance = ?, block_performance = ?, defense_performance = ?, overall_rating = ?, notes = ? WHERE id = ?",
+      "UPDATE rendimiento_equipo SET performance_date = ?, court_performance = ?, serve_performance = ?, attack_performance = ?, block_performance = ?, defense_performance = ?, overall_rating = ?, notes = ? WHERE id = ?",
       [performance_date, court_performance, serve_performance, attack_performance, block_performance, defense_performance, overall_rating, notes, req.params.id]
     );
     res.json({ message: "Rendimiento actualizado", overall_rating });

@@ -6,14 +6,14 @@ import { pool } from "../../config/db";
  * /api/teams:
  *   get:
  *     summary: Obtener todos los equipos
- *     tags: [Teams]
+ *     tags: [Equipos]
  *     responses:
  *       200:
  *         description: Lista de equipos
  */
 export const getTeams = async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM teams ORDER BY created_at DESC");
+    const [rows] = await pool.query("SELECT * FROM equipos ORDER BY created_at DESC");
     res.json(rows);
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });
@@ -25,7 +25,7 @@ export const getTeams = async (req: Request, res: Response) => {
  * /api/teams/{id}:
  *   get:
  *     summary: Obtener equipo por ID
- *     tags: [Teams]
+ *     tags: [Equipos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -40,7 +40,7 @@ export const getTeams = async (req: Request, res: Response) => {
  */
 export const getTeamById = async (req: Request, res: Response) => {
   try {
-    const [rows]: any = await pool.query("SELECT * FROM teams WHERE id = ?", [req.params.id]);
+    const [rows]: any = await pool.query("SELECT * FROM equipos WHERE id = ?", [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: "Equipo no encontrado" });
     res.json(rows[0]);
   } catch (error) {
@@ -53,7 +53,7 @@ export const getTeamById = async (req: Request, res: Response) => {
  * /api/teams:
  *   post:
  *     summary: Crear nuevo equipo
- *     tags: [Teams]
+ *     tags: [Equipos]
  *     requestBody:
  *       required: true
  *       content:
@@ -76,7 +76,7 @@ export const getTeamById = async (req: Request, res: Response) => {
 export const createTeam = async (req: Request, res: Response) => {
   try {
     const { name, category, coach_name } = req.body;
-    const [result]: any = await pool.query("INSERT INTO teams (name, category, coach_name) VALUES (?, ?, ?)", [name, category, coach_name]);
+    const [result]: any = await pool.query("INSERT INTO equipos (name, category, coach_name) VALUES (?, ?, ?)", [name, category, coach_name]);
     res.status(201).json({ id: result.insertId, name, category, coach_name });
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });
@@ -88,7 +88,7 @@ export const createTeam = async (req: Request, res: Response) => {
  * /api/teams/{id}:
  *   put:
  *     summary: Actualizar equipo
- *     tags: [Teams]
+ *     tags: [Equipos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -115,7 +115,7 @@ export const createTeam = async (req: Request, res: Response) => {
 export const updateTeam = async (req: Request, res: Response) => {
   try {
     const { name, category, coach_name } = req.body;
-    await pool.query("UPDATE teams SET name = ?, category = ?, coach_name = ? WHERE id = ?", [name, category, coach_name, req.params.id]);
+    await pool.query("UPDATE equipos SET name = ?, category = ?, coach_name = ? WHERE id = ?", [name, category, coach_name, req.params.id]);
     res.json({ id: req.params.id, name, category, coach_name });
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });
@@ -127,7 +127,7 @@ export const updateTeam = async (req: Request, res: Response) => {
  * /api/teams/{id}:
  *   delete:
  *     summary: Eliminar equipo
- *     tags: [Teams]
+ *     tags: [Equipos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -140,7 +140,7 @@ export const updateTeam = async (req: Request, res: Response) => {
  */
 export const deleteTeam = async (req: Request, res: Response) => {
   try {
-    await pool.query("DELETE FROM teams WHERE id = ?", [req.params.id]);
+    await pool.query("DELETE FROM equipos WHERE id = ?", [req.params.id]);
     res.json({ message: "Equipo eliminado" });
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });
@@ -152,7 +152,7 @@ export const deleteTeam = async (req: Request, res: Response) => {
  * /api/teams/{id}/players:
  *   get:
  *     summary: Obtener jugadores de un equipo
- *     tags: [Teams]
+ *     tags: [Equipos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -167,8 +167,8 @@ export const getTeamPlayers = async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.query(`
       SELECT p.*, u.name, u.email, u.phone 
-      FROM players p 
-      JOIN users u ON p.user_id = u.id 
+      FROM jugadores p 
+      JOIN usuarios u ON p.user_id = u.id 
       WHERE p.team_id = ?
     `, [req.params.id]);
     res.json(rows);

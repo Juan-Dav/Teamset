@@ -6,7 +6,7 @@ import { pool } from "../../config/db";
  * /api/users:
  *   get:
  *     summary: Obtener todos los usuarios
- *     tags: [Users]
+ *     tags: [Usuarios]
  *     responses:
  *       200:
  *         description: Lista de usuarios
@@ -30,7 +30,7 @@ import { pool } from "../../config/db";
  */
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query("SELECT id, name, email, phone, role FROM users ORDER BY created_at DESC");
+    const [rows] = await pool.query("SELECT id, name, email, phone, role FROM usuarios ORDER BY created_at DESC");
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: "Error obteniendo usuarios" });
@@ -42,7 +42,7 @@ export const getUsers = async (req: Request, res: Response) => {
  * /api/users:
  *   post:
  *     summary: Crear nuevo usuario
- *     tags: [Users]
+ *     tags: [Usuarios]
  *     requestBody:
  *       required: true
  *       content:
@@ -73,10 +73,10 @@ export const getUsers = async (req: Request, res: Response) => {
 export const createUser = async (req: Request, res: Response) => {
   try {
     const { name, email, password, phone, role } = req.body;
-    const [existing]: any = await pool.query("SELECT id FROM users WHERE email = ?", [email]);
+    const [existing]: any = await pool.query("SELECT id FROM usuarios WHERE email = ?", [email]);
     if (existing.length > 0) return res.status(400).json({ error: "El email ya está registrado" });
     const [result]: any = await pool.query(
-      "INSERT INTO users (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO usuarios (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)",
       [name, email, password, phone || null, role || 'player']
     );
     res.status(201).json({ id: result.insertId, name, email, phone, role: role || 'player' });
@@ -90,7 +90,7 @@ export const createUser = async (req: Request, res: Response) => {
  * /api/users/{id}:
  *   put:
  *     summary: Actualizar usuario
- *     tags: [Users]
+ *     tags: [Usuarios]
  *     parameters:
  *       - in: path
  *         name: id
@@ -118,8 +118,8 @@ export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, email, phone } = req.body;
-    await pool.query("UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?", [name, email, phone, id]);
-    const [rows]: any = await pool.query("SELECT id, name, email, phone, role FROM users WHERE id = ?", [id]);
+    await pool.query("UPDATE usuarios SET name = ?, email = ?, phone = ? WHERE id = ?", [name, email, phone, id]);
+    const [rows]: any = await pool.query("SELECT id, name, email, phone, role FROM usuarios WHERE id = ?", [id]);
     res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ error: "Error actualizando usuario" });
@@ -131,7 +131,7 @@ export const updateUser = async (req: Request, res: Response) => {
  * /api/users/{id}:
  *   delete:
  *     summary: Eliminar usuario
- *     tags: [Users]
+ *     tags: [Usuarios]
  *     parameters:
  *       - in: path
  *         name: id
@@ -145,7 +145,7 @@ export const updateUser = async (req: Request, res: Response) => {
 export const deleteUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    await pool.query("DELETE FROM users WHERE id = ?", [id]);
+    await pool.query("DELETE FROM usuarios WHERE id = ?", [id]);
     res.json({ message: "Usuario eliminado" });
   } catch (error) {
     res.status(500).json({ error: "Error eliminando usuario" });

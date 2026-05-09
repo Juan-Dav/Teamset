@@ -22,15 +22,15 @@ export const setup = async () => {
     // Remover TRUNCATE para preservar datos existentes
     // await connection.query("TRUNCATE TABLE notification_recipients");
     // await connection.query("TRUNCATE TABLE notifications");
-    // await connection.query("TRUNCATE TABLE team_performance");
-    // await connection.query("TRUNCATE TABLE match_player_stats");
-    // await connection.query("TRUNCATE TABLE matches");
-    // await connection.query("TRUNCATE TABLE attendance");
-    // await connection.query("TRUNCATE TABLE training_assignments");
-    // await connection.query("TRUNCATE TABLE trainings");
-    // await connection.query("TRUNCATE TABLE players");
-    // await connection.query("TRUNCATE TABLE teams");
-    // await connection.query("TRUNCATE TABLE users");
+    // await connection.query("TRUNCATE TABLE rendimiento_equipo");
+    // await connection.query("TRUNCATE TABLE estadisticas_partido");
+    // await connection.query("TRUNCATE TABLE partidos");
+    // await connection.query("TRUNCATE TABLE asistencia");
+    // await connection.query("TRUNCATE TABLE asignaciones_entrenamiento");
+    // await connection.query("TRUNCATE TABLE entrenamientos");
+    // await connection.query("TRUNCATE TABLE jugadores");
+    // await connection.query("TRUNCATE TABLE equipos");
+    // await connection.query("TRUNCATE TABLE usuarios");
     await connection.query("SET FOREIGN_KEY_CHECKS = 1");
 
     console.log("Ejecutando schema.sql...");
@@ -38,23 +38,18 @@ export const setup = async () => {
     await connection.query(schema);
 
     console.log("Asegurando columnas faltantes...");
-    await connection.query("ALTER TABLE trainings ADD COLUMN IF NOT EXISTS survey_question TEXT");
-    await connection.query("ALTER TABLE training_surveys ADD COLUMN IF NOT EXISTS suggestion TEXT");
+    await connection.query("ALTER TABLE entrenamientos ADD COLUMN IF NOT EXISTS survey_question TEXT");
+    await connection.query("ALTER TABLE encuestas_entrenamiento ADD COLUMN IF NOT EXISTS suggestion TEXT");
 
-    console.log("Creando usuario admin por defecto (ID 1)...");
+    console.log("Creando/actualizando usuario admin (ID 1)...");
     const adminEmail = "admin@teamset.com";
     const adminPassword = "admin123";
-    // Verificar si el admin ya existe
-    const [existingAdmin]: any = await connection.query("SELECT id FROM users WHERE email = ?", [adminEmail]);
-    if (existingAdmin.length === 0) {
-      await connection.query(
-        "INSERT INTO users (id, name, email, password, role) VALUES (1, ?, ?, ?, ?)",
-        ["Administrador", adminEmail, adminPassword, "admin"]
-      );
-      console.log(`Admin creado: ${adminEmail} / ${adminPassword} (ID: 1)`);
-    } else {
-      console.log("Admin ya existe, saltando creación.");
-    }
+    await connection.query(
+      `INSERT INTO usuarios (id, name, email, password, role) VALUES (1, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE name = VALUES(name), email = VALUES(email), password = VALUES(password), role = VALUES(role)`,
+      ["Administrador", adminEmail, adminPassword, "admin"]
+    );
+    console.log(`Admin asegurado: ${adminEmail} / ${adminPassword} (ID: 1)`);
 
     console.log("Base de datos configurada exitosamente");
     await connection.end();

@@ -6,7 +6,7 @@ import { pool } from "../../config/db";
  * /api/attendance/training/{trainingId}:
  *   get:
  *     summary: Obtener asistencia por entrenamiento
- *     tags: [Attendance]
+ *     tags: [Asistencia]
  *     parameters:
  *       - in: path
  *         name: trainingId
@@ -21,9 +21,9 @@ export const getAttendanceByTraining = async (req: Request, res: Response) => {
   try {
     const [rows]: any = await pool.query(`
       SELECT a.*, p.jersey_number, u.name as player_name, u.email
-      FROM attendance a
-      JOIN players p ON a.player_id = p.id
-      JOIN users u ON p.user_id = u.id
+      FROM asistencia a
+      JOIN jugadores p ON a.player_id = p.id
+      JOIN usuarios u ON p.user_id = u.id
       WHERE a.training_id = ?
     `, [req.params.trainingId]);
     res.json(rows);
@@ -37,7 +37,7 @@ export const getAttendanceByTraining = async (req: Request, res: Response) => {
  * /api/attendance/set:
  *   post:
  *     summary: Establecer asistencia
- *     tags: [Attendance]
+ *     tags: [Asistencia]
  *     requestBody:
  *       required: true
  *       content:
@@ -66,7 +66,7 @@ export const setAttendanceStatus = async (req: Request, res: Response) => {
     
     // Check if attendance already exists
     const [existing]: any = await pool.query(
-      "SELECT id, status FROM attendance WHERE training_id = ? AND player_id = ?",
+      "SELECT id, status FROM asistencia WHERE training_id = ? AND player_id = ?",
       [training_id, player_id]
     );
     
@@ -74,34 +74,34 @@ export const setAttendanceStatus = async (req: Request, res: Response) => {
       const previousStatus = existing[0].status;
       
       await pool.query(
-        "UPDATE attendance SET status = ?, confirmed_at = ? WHERE training_id = ? AND player_id = ?",
+        "UPDATE asistencia SET status = ?, confirmed_at = ? WHERE training_id = ? AND player_id = ?",
         [status, status === 'attending' ? new Date() : null, training_id, player_id]
       );
       
       // Only increment streak if changing from non-attending to attending
       if (status === 'attending' && previousStatus !== 'attending') {
         await pool.query(
-          "UPDATE players SET attendance_streak = attendance_streak + 1, last_attendance_date = CURDATE() WHERE id = ?",
+          "UPDATE jugadores SET attendance_streak = attendance_streak + 1, last_attendance_date = CURDATE() WHERE id = ?",
           [player_id]
         );
       }
       // Decrement streak if changing from attending to non-attending
       else if (status !== 'attending' && previousStatus === 'attending') {
         await pool.query(
-          "UPDATE players SET attendance_streak = GREATEST(attendance_streak - 1, 0) WHERE id = ?",
+          "UPDATE jugadores SET attendance_streak = GREATEST(attendance_streak - 1, 0) WHERE id = ?",
           [player_id]
         );
       }
     } else {
       await pool.query(
-        "INSERT INTO attendance (training_id, player_id, status, confirmed_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO asistencia (training_id, player_id, status, confirmed_at) VALUES (?, ?, ?, ?)",
         [training_id, player_id, status, status === 'attending' ? new Date() : null]
       );
       
       // Increment streak for new attendance confirmation
       if (status === 'attending') {
         await pool.query(
-          "UPDATE players SET attendance_streak = attendance_streak + 1, last_attendance_date = CURDATE() WHERE id = ?",
+          "UPDATE jugadores SET attendance_streak = attendance_streak + 1, last_attendance_date = CURDATE() WHERE id = ?",
           [player_id]
         );
       }
@@ -118,7 +118,7 @@ export const setAttendanceStatus = async (req: Request, res: Response) => {
  * /api/attendance/streak/{playerId}:
  *   get:
  *     summary: Obtener racha de asistencia
- *     tags: [Attendance]
+ *     tags: [Asistencia]
  *     parameters:
  *       - in: path
  *         name: playerId
@@ -132,7 +132,7 @@ export const setAttendanceStatus = async (req: Request, res: Response) => {
 export const getAttendanceStreak = async (req: Request, res: Response) => {
   try {
     const [rows]: any = await pool.query(
-      "SELECT id, attendance_streak, last_attendance_date FROM players WHERE id = ?",
+      "SELECT id, attendance_streak, last_attendance_date FROM jugadores WHERE id = ?",
       [req.params.playerId]
     );
     res.json(rows[0] || { attendance_streak: 0, last_attendance_date: null });

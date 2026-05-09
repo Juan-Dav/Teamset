@@ -6,7 +6,7 @@ import { pool } from "../../config/db";
  * /api/auth/login:
  *   post:
  *     summary: Iniciar sesión
- *     tags: [Auth]
+ *     tags: [Autenticación]
  *     requestBody:
  *       required: true
  *       content:
@@ -47,7 +47,7 @@ import { pool } from "../../config/db";
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    const [rows]: any = await pool.query("SELECT * FROM users WHERE email = ? AND password = ?", [email, password]);
+    const [rows]: any = await pool.query("SELECT * FROM usuarios WHERE email = ? AND password = ?", [email, password]);
     if (rows.length === 0) return res.status(401).json({ message: "Credenciales incorrectas" });
     const user = rows[0];
     res.json({ id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role });
@@ -61,7 +61,7 @@ export const login = async (req: Request, res: Response) => {
  * /api/auth/register:
  *   post:
  *     summary: Registrar nuevo usuario
- *     tags: [Auth]
+ *     tags: [Autenticación]
  *     requestBody:
  *       required: true
  *       content:
@@ -92,11 +92,11 @@ export const login = async (req: Request, res: Response) => {
 export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password, phone } = req.body;
-    const [existing]: any = await pool.query("SELECT id FROM users WHERE email = ?", [email]);
+    const [existing]: any = await pool.query("SELECT id FROM usuarios WHERE email = ?", [email]);
     if (existing.length > 0) return res.status(400).json({ message: "El email ya está registrado" });
 
     const [result]: any = await pool.query(
-      "INSERT INTO users (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO usuarios (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)",
       [name, email, password, phone || null, "player"]
     );
 
@@ -112,7 +112,7 @@ export const register = async (req: Request, res: Response) => {
  * /api/auth/profile/{id}:
  *   get:
  *     summary: Obtener perfil de usuario
- *     tags: [Auth]
+ *     tags: [Autenticación]
  *     parameters:
  *       - in: path
  *         name: id
@@ -128,7 +128,7 @@ export const register = async (req: Request, res: Response) => {
 export const getProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;
-    const [rows]: any = await pool.query("SELECT id, name, email, phone, role FROM users WHERE id = ?", [userId]);
+    const [rows]: any = await pool.query("SELECT id, name, email, phone, role FROM usuarios WHERE id = ?", [userId]);
     if (rows.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
     res.json(rows[0]);
   } catch (error) {
@@ -141,7 +141,7 @@ export const getProfile = async (req: Request, res: Response) => {
  * /api/auth/profile/{id}:
  *   put:
  *     summary: Actualizar perfil de usuario
- *     tags: [Auth]
+ *     tags: [Autenticación]
  *     parameters:
  *       - in: path
  *         name: id
@@ -173,13 +173,13 @@ export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;
     const { name, email, phone, password } = req.body;
-    let query = "UPDATE users SET name = ?, email = ?, phone = ?";
+    let query = "UPDATE usuarios SET name = ?, email = ?, phone = ?";
     let params: any[] = [name, email, phone];
     if (password) { query += ", password = ?"; params.push(password); }
     query += " WHERE id = ?";
     params.push(userId);
     await pool.query(query, params);
-    const [rows]: any = await pool.query("SELECT id, name, email, phone, role FROM users WHERE id = ?", [userId]);
+    const [rows]: any = await pool.query("SELECT id, name, email, phone, role FROM usuarios WHERE id = ?", [userId]);
     res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });

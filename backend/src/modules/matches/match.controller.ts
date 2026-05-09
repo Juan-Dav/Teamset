@@ -6,7 +6,7 @@ import { pool } from "../../config/db";
  * /api/matches:
  *   get:
  *     summary: Obtener todos los partidos
- *     tags: [Matches]
+ *     tags: [Partidos]
  *     responses:
  *       200:
  *         description: Lista de partidos
@@ -15,8 +15,8 @@ export const getMatches = async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.query(`
       SELECT m.*, t.name as team_name 
-      FROM matches m 
-      JOIN teams t ON m.team_id = t.id 
+      FROM partidos m 
+      JOIN equipos t ON m.team_id = t.id 
       ORDER BY m.match_date DESC
     `);
     res.json(rows);
@@ -30,7 +30,7 @@ export const getMatches = async (req: Request, res: Response) => {
  * /api/matches/{id}:
  *   get:
  *     summary: Obtener partido por ID
- *     tags: [Matches]
+ *     tags: [Partidos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -45,7 +45,7 @@ export const getMatches = async (req: Request, res: Response) => {
  */
 export const getMatchById = async (req: Request, res: Response) => {
   try {
-    const [rows]: any = await pool.query("SELECT * FROM matches WHERE id = ?", [req.params.id]);
+    const [rows]: any = await pool.query("SELECT * FROM partidos WHERE id = ?", [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: "Partido no encontrado" });
     res.json(rows[0]);
   } catch (error) {
@@ -58,7 +58,7 @@ export const getMatchById = async (req: Request, res: Response) => {
  * /api/matches:
  *   post:
  *     summary: Crear nuevo partido
- *     tags: [Matches]
+ *     tags: [Partidos]
  *     requestBody:
  *       required: true
  *       content:
@@ -100,7 +100,7 @@ export const createMatch = async (req: Request, res: Response) => {
   try {
     const { team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description } = req.body;
     const [resultDb]: any = await pool.query(
-      "INSERT INTO matches (team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO partidos (team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description]
     );
     res.status(201).json({ id: resultDb.insertId, team_id, opponent, match_date, result });
@@ -114,7 +114,7 @@ export const createMatch = async (req: Request, res: Response) => {
  * /api/matches/{id}:
  *   put:
  *     summary: Actualizar partido
- *     tags: [Matches]
+ *     tags: [Partidos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -155,7 +155,7 @@ export const updateMatch = async (req: Request, res: Response) => {
   try {
     const { opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description } = req.body;
     await pool.query(
-      "UPDATE matches SET opponent = ?, match_date = ?, sets_won = ?, sets_lost = ?, points_scored = ?, points_conceded = ?, result = ?, location = ?, description = ? WHERE id = ?",
+      "UPDATE partidos SET opponent = ?, match_date = ?, sets_won = ?, sets_lost = ?, points_scored = ?, points_conceded = ?, result = ?, location = ?, description = ? WHERE id = ?",
       [opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description, req.params.id]
     );
     res.json({ message: "Partido actualizado" });
@@ -169,7 +169,7 @@ export const updateMatch = async (req: Request, res: Response) => {
  * /api/matches/{id}:
  *   delete:
  *     summary: Eliminar partido
- *     tags: [Matches]
+ *     tags: [Partidos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -182,7 +182,7 @@ export const updateMatch = async (req: Request, res: Response) => {
  */
 export const deleteMatch = async (req: Request, res: Response) => {
   try {
-    await pool.query("DELETE FROM matches WHERE id = ?", [req.params.id]);
+    await pool.query("DELETE FROM partidos WHERE id = ?", [req.params.id]);
     res.json({ message: "Partido eliminado" });
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });
@@ -191,10 +191,10 @@ export const deleteMatch = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/matches/{id}/players:
+ * /api/matches/{id}/stats:
  *   get:
  *     summary: Obtener estadísticas de jugadores en un partido
- *     tags: [Matches]
+ *     tags: [Partidos]
  *     parameters:
  *       - in: path
  *         name: id
@@ -209,9 +209,9 @@ export const getMatchPlayerStats = async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.query(`
       SELECT mps.*, p.jersey_number, u.name as player_name
-      FROM match_player_stats mps
-      JOIN players p ON mps.player_id = p.id
-      JOIN users u ON p.user_id = u.id
+      FROM estadisticas_partido mps
+      JOIN jugadores p ON mps.player_id = p.id
+      JOIN usuarios u ON p.user_id = u.id
       WHERE mps.match_id = ?
     `, [req.params.id]);
     res.json(rows);

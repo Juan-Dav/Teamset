@@ -6,7 +6,7 @@ import { pool } from "../../config/db";
  * /api/training-surveys:
  *   post:
  *     summary: Crear o actualizar encuesta de entrenamiento
- *     tags: [Training Surveys]
+ *     tags: [Encuestas de Entrenamiento]
  *     requestBody:
  *       required: true
  *       content:
@@ -40,18 +40,18 @@ export const createSurvey = async (req: Request, res: Response) => {
     }
     
     const [existing]: any = await pool.query(
-      "SELECT id FROM training_surveys WHERE training_id = ? AND player_id = ?",
+      "SELECT id FROM encuestas_entrenamiento WHERE training_id = ? AND player_id = ?",
       [training_id, player_id]
     );
     
     if (existing.length > 0) {
       await pool.query(
-        "UPDATE training_surveys SET satisfaction = ?, suggestion = ? WHERE training_id = ? AND player_id = ?",
+        "UPDATE encuestas_entrenamiento SET satisfaction = ?, suggestion = ? WHERE training_id = ? AND player_id = ?",
         [satisfaction, suggestion || null, training_id, player_id]
       );
     } else {
       await pool.query(
-        "INSERT INTO training_surveys (training_id, player_id, satisfaction, suggestion) VALUES (?, ?, ?, ?)",
+        "INSERT INTO encuestas_entrenamiento (training_id, player_id, satisfaction, suggestion) VALUES (?, ?, ?, ?)",
         [training_id, player_id, satisfaction, suggestion || null]
       );
     }
@@ -67,7 +67,7 @@ export const createSurvey = async (req: Request, res: Response) => {
  * /api/training-surveys/training/{trainingId}:
  *   get:
  *     summary: Obtener encuestas por entrenamiento
- *     tags: [Training Surveys]
+ *     tags: [Encuestas de Entrenamiento]
  *     parameters:
  *       - in: path
  *         name: trainingId
@@ -82,9 +82,9 @@ export const getSurveyByTraining = async (req: Request, res: Response) => {
   try {
     const [rows]: any = await pool.query(
       `SELECT ts.*, u.name as player_name 
-       FROM training_surveys ts
-       JOIN players p ON ts.player_id = p.id
-       JOIN users u ON p.user_id = u.id
+       FROM encuestas_entrenamiento ts
+       JOIN jugadores p ON ts.player_id = p.id
+       JOIN usuarios u ON p.user_id = u.id
        WHERE ts.training_id = ?`,
       [req.params.trainingId]
     );
@@ -99,7 +99,7 @@ export const getSurveyByTraining = async (req: Request, res: Response) => {
  * /api/training-surveys/training/{trainingId}/player/{playerId}:
  *   get:
  *     summary: Obtener encuesta de un jugador
- *     tags: [Training Surveys]
+ *     tags: [Encuestas de Entrenamiento]
  *     parameters:
  *       - in: path
  *         name: trainingId
@@ -118,7 +118,7 @@ export const getSurveyByTraining = async (req: Request, res: Response) => {
 export const getPlayerSurvey = async (req: Request, res: Response) => {
   try {
     const [rows]: any = await pool.query(
-      "SELECT * FROM training_surveys WHERE training_id = ? AND player_id = ?",
+      "SELECT * FROM encuestas_entrenamiento WHERE training_id = ? AND player_id = ?",
       [req.params.trainingId, req.params.playerId]
     );
     res.json(rows[0] || null);
