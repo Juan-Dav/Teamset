@@ -12,9 +12,14 @@ import {
   getTeams,
   createTeam,
   getTeamPlayers,
+  getTeamUsers,
+  createTeamUser,
+  deleteTeamUser as deleteTeamUserApi,
   getPlayers,
   getPlayerByUserId,
   createPlayerProfile,
+  createPlayerWithUser,
+  deletePlayer as deletePlayerApi,
   getMatches,
   createMatch,
   getPerformance,
@@ -36,8 +41,7 @@ let render: () => void;
 let globalTrainings: any[] = [];
 let globalTeams: any[] = [];
 let globalPlayers: any[] = [];
-let globalMatches: any[] = [];
-let globalPerformance: any[] = [];
+let getTeamUsersCached: any[] = [];
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr + "T00:00:00");
@@ -154,13 +158,26 @@ const renderDashboard = async () => {
   const players = await getPlayers();
   const matches = await getMatches();
   const performance = await getPerformance();
+  const users = await getTeamUsers().catch(() => []);
   
   // Store globally for access in survey functions
   globalTrainings = trainings;
   globalTeams = teams;
   globalPlayers = players;
-  globalMatches = matches;
-  globalPerformance = performance;
+  getTeamUsersCached = users;
+
+  // Fetch player survey responses for surveys tab
+  let playerSurveyResponses: Record<number, any> = {};
+  if (user.role === 'player') {
+    const player = await getPlayerByUserId(user.id);
+    if (player) {
+      const trainingsWithSurveys = trainings.filter((t: any) => t.survey_question);
+      await Promise.all(trainingsWithSurveys.map(async (t: any) => {
+        const survey = await getPlayerSurvey(t.id, player.id);
+        if (survey) playerSurveyResponses[t.id] = survey;
+      }));
+    }
+  }
   
   const today = new Date().toISOString().split("T")[0];
   const upcomingTrainings = trainings.filter((t: any) => t.date >= today).sort((a: any, b: any) => a.date.localeCompare(b.date));
@@ -185,16 +202,16 @@ const renderDashboard = async () => {
               ["matches", "Partidos", "6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"],
               ["trainings", "Entrenamientos", "9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"],
               ["attendance", "Asistencia", "9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"],
-               ["player-stats", "Estadísticas", "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"],
-               ["performance", "Rendimiento", "15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"],
-               ["surveys", "Encuestas", "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"]
-             ].map(([tab, label, path]) => {
-               const isActive = activeDashboardTab === tab;
-               return `<button onclick="window.switchTab('${tab}')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20" : "text-gray-400 hover:bg-gray-800 hover:text-white"}">
-                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M${path}"/></svg>${label}
-               </button>`;
-             }).join("")}
-           </nav>
+              ["player-stats", "Estadísticas", "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"],
+                ["performance", "Rendimiento", "15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"],
+                ["surveys", "Encuestas", "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"]
+              ].map(([tab, label, path]) => {
+                const isActive = activeDashboardTab === tab;
+                return `<button onclick="window.switchTab('${tab}')" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${isActive ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20" : "text-gray-400 hover:bg-gray-800 hover:text-white"}">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M${path}"/></svg>${label}
+                </button>`;
+              }).join("")}
+            </nav>
           <div class="p-4 border-t border-gray-800">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-9 h-9 bg-yellow-500 rounded-lg flex items-center justify-center text-black font-bold">${user.name.charAt(0).toUpperCase()}</div>
@@ -223,9 +240,9 @@ const renderDashboard = async () => {
               ["trainings", "Entrenamientos", "9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"],
               ["matches", "Partidos", "6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"],
               ["player-stats", "Estadísticas", "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"],
-               ["performance", "Rendimiento", "15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"],
-               ["surveys", "Encuestas", "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"]
-             ].map(([tab, label, path]) => {
+                ["performance", "Rendimiento", "15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"],
+                ["surveys", "Encuestas", "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"]
+              ].map(([tab, label, path]) => {
               const isActive = activeDashboardTab === tab;
               return `<button onclick="window.switchTab('${tab}')" class="flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs ${isActive ? "text-yellow-500" : "text-gray-500"}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M${path}"/></svg>${label}
@@ -240,9 +257,20 @@ const renderDashboard = async () => {
 
             <!-- OVERVIEW -->
             <div id="tab-overview" class="${activeDashboardTab === "overview" ? "" : "hidden"}">
-              <div class="mb-8"><h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Hola, ${user.name.split(" ")[0]}</h1><p class="text-gray-400">Resumen de tu equipo de voleibol</p></div>
+              <div class="mb-8">
+                <h1 class="text-2xl lg:text-3xl font-bold text-white mb-1">Hola, ${user.name.split(" ")[0]}</h1>
+                <p class="text-gray-400">Resumen de tu equipo de voleibol</p>
+              </div>
+              <!-- Search Bar -->
+              <div class="mb-6">
+                <div class="relative max-w-md">
+                  <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  <input id="global-search" type="text" placeholder="Buscar equipos, jugadores..." oninput="window.handleSearch(this.value)" class="w-full pl-12 pr-4 py-3 bg-gray-900 border border-gray-700 text-white rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none placeholder-gray-500" />
+                </div>
+                <div id="search-results-dropdown" class="hidden mt-1 bg-gray-900 border border-gray-700 rounded-xl max-h-60 overflow-y-auto shadow-xl"></div>
+              </div>
               <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalUsers || 0}</p><p class="text-sm text-gray-400">Miembros</p></div>
+                <div onclick="window.showMembers()" class="bg-gray-900 border border-gray-800 rounded-xl p-5 cursor-pointer hover:border-yellow-500/50 transition-all"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalUsers || 0}</p><p class="text-sm text-gray-400">Miembros</p></div>
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalPlayers || 0}</p><p class="text-sm text-gray-400">Jugadores</p></div>
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalTrainings || 0}</p><p class="text-sm text-gray-400">Entrenamientos</p></div>
                 <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalMatches || 0}</p><p class="text-sm text-gray-400">Partidos</p></div>
@@ -288,13 +316,16 @@ const renderDashboard = async () => {
                           ${p.phone ? `<p class="text-xs text-gray-500">📱 ${p.phone}</p>` : ''}
                         </div>
                       </div>
-                      <div class="text-right">
-                        <div class="flex gap-2 text-xs">
-                          <span class="px-2 py-1 bg-blue-500/10 text-blue-500 rounded-md">Ataques: ${p.attacks || 0}</span>
-                          <span class="px-2 py-1 bg-green-500/10 text-green-500 rounded-md">Bloqueos: ${p.blocks || 0}</span>
-                          <span class="px-2 py-1 bg-purple-500/10 text-purple-500 rounded-md">Saque: ${p.serves || 0}</span>
+                      <div class="flex items-center gap-3">
+                        <div class="text-right">
+                          <div class="flex gap-2 text-xs">
+                            <span class="px-2 py-1 bg-blue-500/10 text-blue-500 rounded-md">Ataques: ${p.attacks || 0}</span>
+                            <span class="px-2 py-1 bg-green-500/10 text-green-500 rounded-md">Bloqueos: ${p.blocks || 0}</span>
+                            <span class="px-2 py-1 bg-purple-500/10 text-purple-500 rounded-md">Saque: ${p.serves || 0}</span>
+                          </div>
+                          <p class="text-xs text-yellow-500 mt-1">🔥 Racha: ${p.attendance_streak || 0} días</p>
                         </div>
-                        <p class="text-xs text-yellow-500 mt-1">🔥 Racha: ${p.attendance_streak || 0} días</p>
+                        ${user.role === 'admin' ? `<button onclick="window.deletePlayer(${p.id})" class="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-sm hover:bg-red-500/20 ml-2">Eliminar</button>` : ''}
                       </div>
                     </div>
                   </div>`).join('')}
@@ -324,7 +355,7 @@ const renderDashboard = async () => {
               </div>
             </div>
 
-             <!-- TRAININGS -->
+              <!-- TRAININGS -->
             <div id="tab-trainings" class="${activeDashboardTab === "trainings" ? "" : "hidden"}">
               <div class="flex items-center justify-between mb-6">
                 <div><h1 class="text-2xl font-bold text-white mb-1">Entrenamientos</h1><p class="text-gray-400">Planifica y gestiona los entrenamientos</p></div>
@@ -333,7 +364,7 @@ const renderDashboard = async () => {
               <div class="space-y-3">
                 ${trainings.length === 0 ? '<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center"><p class="text-gray-500">No hay entrenamientos registrados</p></div>' : trainings.map((t: any) => {
                   const isPast = new Date(t.date) < new Date(today);
-                  return `<div class="bg-gray-900 border border-gray-800 hover:border-yellow-500/30 rounded-xl p-5 transition-all">
+                  return `<div class="bg-gray-900 border ${isPast ? 'border-gray-700 opacity-70' : 'border-gray-800 hover:border-yellow-500/30'} rounded-xl p-5 transition-all">
                     <div class="flex items-start justify-between">
                       <div class="flex items-start gap-4">
                         <div class="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center"><svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
@@ -354,7 +385,7 @@ const renderDashboard = async () => {
 
             <!-- ATTENDANCE -->
             <div id="tab-attendance" class="${activeDashboardTab === "attendance" ? "" : "hidden"}">
-              <div class="mb-6"><h1 class="text-2xl font-bold text-white mb-1">Asistencia</h1><p class="text-gray-400">Confirma tu asistencia a los entrenamientos</p></div>
+              <div class="mb-6"><h1 class="text-2xl font-bold text-white mb-1">Asistencia</h1><p class="text-gray-400">${user.role === 'admin' ? 'Visualiza la confirmación de asistencia de los jugadores' : 'Confirma tu asistencia a los entrenamientos'}</p></div>
               ${trainings.length === 0 ? '<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center"><p class="text-gray-500">No hay entrenamientos registrados</p></div>' : `<div class="space-y-4" id="attendance-list">${trainings.map((t: any) => {
                 const isPast = new Date(t.date) < new Date(today);
                 return `<div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden" data-training-id="${t.id}">
@@ -364,7 +395,11 @@ const renderDashboard = async () => {
                         <div class="w-10 h-10 ${isPast ? "bg-gray-800" : "bg-yellow-500/20"} rounded-lg flex items-center justify-center"><svg class="w-5 h-5 ${isPast ? "text-gray-600" : "text-yellow-500"}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
                         <div><h3 class="font-semibold text-white">${t.title}</h3><p class="text-sm text-gray-400">${formatDate(t.date)}</p></div>
                       </div>
-                      ${!isPast ? `<button onclick="window.confirmAttendance(${t.id})" class="confirm-btn px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 font-bold text-sm">Confirmar asistencia</button>` : '<span class="text-sm text-gray-500">Entrenamiento finalizado</span>'}
+                      <div class="flex gap-2">
+                        ${user.role === 'admin' ? `<button onclick="window.viewAttendance(${t.id})" class="px-4 py-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 font-bold text-sm">Ver Asistencia</button>` : ''}
+                        ${!isPast && user.role === 'player' ? `<button onclick="window.confirmAttendance(${t.id})" class="confirm-btn px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 font-bold text-sm">Confirmar asistencia</button>` : ''}
+                        ${isPast ? '<span class="text-sm text-gray-500">Entrenamiento finalizado</span>' : ''}
+                      </div>
                     </div>
                     <div class="mt-3 attendance-status" id="status-${t.id}"></div>
                   </div>
@@ -419,7 +454,7 @@ const renderDashboard = async () => {
                       <div class="flex gap-2">
                         ${user.role === 'admin' ? `<button onclick="window.editSurveyQuestion(${t.id})" class="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-sm hover:bg-purple-500/20">Editar</button>` : ''}
                         ${user.role === 'admin' ? `<button onclick="window.viewSurveyResults(${t.id})" class="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-sm hover:bg-blue-500/20">Ver Resultados</button>` : ''}
-                        ${user.role === 'player' ? `<button onclick="window.respondToSurvey(${t.id})" class="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-sm hover:bg-green-500/20">Responder</button>` : ''}
+                        ${user.role === 'player' ? (playerSurveyResponses[t.id] ? `<button disabled class="px-3 py-1.5 bg-gray-600/50 text-gray-400 rounded-lg text-sm cursor-not-allowed">✓ Encuesta respondida</button>` : `<button onclick="window.respondToSurvey(${t.id})" class="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-sm hover:bg-green-500/20">Responder</button>`) : ''}
                       </div>
                     </div>
                     <div class="bg-gray-800/50 rounded-lg p-4">
@@ -660,7 +695,7 @@ const renderDashboard = async () => {
         ${surveys.filter((s: any) => s.suggestion).map((s: any) => `
           <div class="bg-gray-800/30 rounded-lg p-3 text-sm">
             <p class="text-gray-300">${s.suggestion}</p>
-            <p class="text-xs text-gray-500 mt-1">Jugador ID: ${s.player_id}</p>
+            <p class="text-xs text-gray-500 mt-1">${s.player_name || 'Jugador ID: ' + s.player_id}</p>
           </div>
         `).join('') || '<p class="text-gray-500 text-sm">No hay sugerencias</p>'}
       </div>
@@ -670,7 +705,7 @@ const renderDashboard = async () => {
           const label = s.satisfaction === 'happy' ? 'Me gustó' : s.satisfaction === 'neutral' ? 'Más o menos' : 'No gustó';
           const color = s.satisfaction === 'happy' ? 'text-green-500' : s.satisfaction === 'neutral' ? 'text-yellow-500' : 'text-red-500';
           return `<div class="flex items-center justify-between bg-gray-800/30 rounded p-2 text-sm">
-            <span class="text-gray-300">Jugador ID: ${s.player_id}</span>
+            <span class="text-gray-300">${s.player_name || 'Jugador ID: ' + s.player_id}</span>
             <span class="${color} font-medium">${label}</span>
           </div>`;
         }).join('')}
@@ -695,6 +730,44 @@ const renderDashboard = async () => {
     }
     const training = globalTrainings.find((t: any) => t.id === trainingId);
     const existingSurvey = await getPlayerSurvey(trainingId, player.id);
+    
+    // If already responded, show read-only view
+    if (existingSurvey) {
+      const satisfactionLabels: Record<string, string> = { happy: 'Me gustó 😊', neutral: 'Más o menos 😐', sad: 'No gustó 😢' };
+      const satisfactionColors: Record<string, string> = { happy: 'border-green-500 text-green-500', neutral: 'border-yellow-500 text-yellow-500', sad: 'border-red-500 text-red-500' };
+      const overlay = document.createElement("div");
+      overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+      const modal = document.createElement("div");
+      modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-lg mx-4 shadow-2xl";
+      modal.innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold text-yellow-500">Encuesta Respondida</h3>
+          <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+        </div>
+        <div class="text-center mb-6">
+          <div class="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <p class="text-white font-bold text-lg mb-2">Ya has respondido esta encuesta</p>
+          <p class="text-yellow-500 font-medium">${training?.survey_question || 'Sin pregunta'}</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl p-6 text-center">
+          <p class="text-gray-400 mb-3">Tu respuesta:</p>
+          <div class="inline-flex items-center gap-3 px-6 py-3 rounded-xl border-2 ${satisfactionColors[existingSurvey.satisfaction] || ''}">
+            <span class="text-3xl">${existingSurvey.satisfaction === 'happy' ? '😊' : existingSurvey.satisfaction === 'neutral' ? '😐' : '😢'}</span>
+            <span class="text-xl font-bold">${satisfactionLabels[existingSurvey.satisfaction] || existingSurvey.satisfaction}</span>
+          </div>
+          ${existingSurvey.suggestion ? `<p class="text-gray-300 mt-4 italic">"${existingSurvey.suggestion}"</p>` : ''}
+        </div>
+        <div class="mt-6">
+          <button onclick="this.closest('.fixed').remove()" class="w-full px-4 py-3 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 font-bold">Cerrar</button>
+        </div>
+      `;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+      return;
+    }
     
     const overlay = document.createElement("div");
     overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
@@ -729,11 +802,11 @@ const renderDashboard = async () => {
               <span class="text-sm text-gray-300">No gustó</span>
             </button>
           </div>
-          <input type="hidden" id="selected-satisfaction" value="${existingSurvey?.satisfaction || ''}" />
+          <input type="hidden" id="selected-satisfaction" value="" />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-1.5">Sugerencia (opcional)</label>
-          <textarea id="survey-suggestion" rows="3" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none resize-none" placeholder="Escribe tu sugerencia...">${existingSurvey?.suggestion || ''}</textarea>
+          <textarea id="survey-suggestion" rows="3" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none resize-none" placeholder="Escribe tu sugerencia..."></textarea>
         </div>
         <div class="flex gap-3">
           <button type="button" onclick="this.closest('.fixed').remove()" class="flex-1 px-4 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium">Cancelar</button>
@@ -744,12 +817,6 @@ const renderDashboard = async () => {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-    
-    // Mark existing selection
-    if (existingSurvey?.satisfaction) {
-      const btn = modal.querySelector(`[data-satisfaction="${existingSurvey.satisfaction}"]`);
-      if (btn) btn.classList.add('border-yellow-500', 'bg-yellow-500/10');
-    }
     
     (window as any).selectSatisfaction = (value: string) => {
       (document.getElementById('selected-satisfaction') as HTMLInputElement).value = value;
@@ -768,7 +835,7 @@ const renderDashboard = async () => {
         showToast("Selecciona una calificación", "error");
         return;
       }
-      await submitSurvey(trainingId, satisfaction, suggestion);
+      await (window as any).submitSurvey(trainingId, satisfaction, suggestion);
     });
   } catch (error: any) {
     showToast(error.message || "Error al cargar encuesta", "error");
@@ -868,24 +935,83 @@ const loadAttendanceStatus = async () => {
 };
 
 (window as any).showAddPlayer = () => {
-  showEditModal("Nuevo Jugador", [
-    { label: "ID de Usuario", value: "", id: "player-user-id" },
-    { label: "ID de Equipo", value: "", id: "player-team-id" },
-    { label: "Posición", value: "", id: "player-position" },
-    { label: "Número de camiseta", value: "", id: "player-jersey", type: "number" }
-  ], async (v) => { 
-    await fetch("http://localhost:3000/api/players", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        user_id: parseInt(v["player-user-id"]), 
-        team_id: parseInt(v["player-team-id"]), 
-        position: v["player-position"], 
-        jersey_number: parseInt(v["player-jersey"]) 
-      })
-    }); 
-    showToast("Jugador creado"); 
-    render(); 
+  const overlay = document.createElement("div");
+  overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+  const modal = document.createElement("div");
+  modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-md mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+  modal.innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-yellow-500">Nuevo Jugador</h3>
+      <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+    </div>
+    <form id="add-player-form" autocomplete="off" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Nombre Completo</label>
+        <input id="ap-name" type="text" placeholder="Nombre del jugador" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Equipo</label>
+        <select id="ap-team" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required>
+          <option value="">Selecciona un equipo</option>
+          ${globalTeams.map((t: any) => `<option value="${t.id}">${t.name}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+        <input id="ap-email" type="email" placeholder="correo@ejemplo.com" autocomplete="off" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Contraseña</label>
+        <input id="ap-password" type="password" placeholder="••••••••" autocomplete="new-password" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Número de Celular</label>
+        <input id="ap-phone" type="tel" placeholder="Ej: 3001234567" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Posición</label>
+        <select id="ap-position" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required>
+          <option value="">Selecciona posición</option>
+          <option value="Colocador">Colocador</option>
+          <option value="Atacante externo">Atacante externo</option>
+          <option value="Atacante opuesto">Atacante opuesto</option>
+          <option value="Central">Central</option>
+          <option value="Líbero">Líbero</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Número de camiseta</label>
+        <input id="ap-jersey" type="number" min="1" max="99" placeholder="Ej: 10" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required />
+      </div>
+      <div class="flex gap-3 pt-4">
+        <button type="button" onclick="this.closest('.fixed').remove()" class="flex-1 px-4 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium">Cancelar</button>
+        <button type="submit" class="flex-1 px-4 py-3 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 font-bold">Guardar</button>
+      </div>
+    </form>`;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  document.getElementById("add-player-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = (document.getElementById("ap-name") as HTMLInputElement).value.trim();
+    const teamId = parseInt((document.getElementById("ap-team") as HTMLSelectElement).value);
+    const email = (document.getElementById("ap-email") as HTMLInputElement).value.trim();
+    const password = (document.getElementById("ap-password") as HTMLInputElement).value;
+    const phone = (document.getElementById("ap-phone") as HTMLInputElement).value.trim();
+    const position = (document.getElementById("ap-position") as HTMLSelectElement).value;
+    const jersey = parseInt((document.getElementById("ap-jersey") as HTMLInputElement).value);
+    if (!name || !teamId || !email || !password || !position || !jersey) {
+      showToast("Completa todos los campos obligatorios", "error");
+      return;
+    }
+    try {
+      await createPlayerWithUser({ name, email, password, phone, team_id: teamId, position, jersey_number: jersey });
+      showToast("Jugador creado exitosamente");
+      overlay.remove();
+      render();
+    } catch (err: any) {
+      showToast(err.message || "Error al crear jugador", "error");
+    }
   });
 };
 
@@ -1024,6 +1150,157 @@ const loadAttendanceStatus = async () => {
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
 };
 
+// ==================== MEMBERS ====================
+
+(window as any).showMembers = async () => {
+  try {
+    const users = await getTeamUsers();
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+    const modal = document.createElement("div");
+    modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+    modal.innerHTML = `
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-yellow-500">Miembros del Sistema</h3>
+        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+      <div class="mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <p class="text-gray-400">Total: <span class="text-white font-bold">${users.length}</span> miembros</p>
+      </div>
+      <div class="space-y-3">
+        ${users.length === 0 ? '<p class="text-gray-500 text-center py-6">No hay miembros registrados</p>' : users.map((u: any) => `
+          <div class="bg-gray-800/50 rounded-lg p-4 flex items-center justify-between hover:bg-gray-800 transition-all">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center text-black font-bold text-lg">${(u.name || '?').charAt(0).toUpperCase()}</div>
+              <div>
+                <p class="font-semibold text-white">${u.name || 'Sin nombre'}</p>
+                <p class="text-sm text-gray-400">${u.email || ''}</p>
+                ${u.phone ? `<p class="text-xs text-gray-500">📱 ${u.phone}</p>` : ''}
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="px-3 py-1 rounded-lg text-xs font-bold ${u.role === 'admin' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-blue-500/20 text-blue-500'}">${u.role === 'admin' ? 'Admin' : 'Jugador'}</span>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  } catch (error: any) {
+    showToast(error.message || "Error al cargar miembros", "error");
+  }
+};
+
+// ==================== SEARCH ====================
+
+(window as any).handleSearch = (query: string) => {
+  const dropdown = document.getElementById("search-results-dropdown");
+  if (!dropdown) return;
+  if (!query.trim()) { dropdown.classList.add("hidden"); dropdown.innerHTML = ""; return; }
+  const q = query.toLowerCase().trim();
+  const teamResults = globalTeams.filter((t: any) => t.name?.toLowerCase().includes(q));
+  const playerResults = globalPlayers.filter((p: any) => p.name?.toLowerCase().includes(q));
+  let html = "";
+  if (teamResults.length > 0) {
+    html += `<div class="px-3 py-2 text-xs text-gray-500 font-semibold uppercase">Equipos</div>`;
+    teamResults.slice(0, 5).forEach((t: any) => {
+      html += `<button onclick="window.switchTab('team'); document.getElementById('global-search').value=''; window.handleSearch('')" class="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 flex items-center gap-2">
+        <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>${t.name}
+      </button>`;
+    });
+  }
+  if (playerResults.length > 0) {
+    html += `<div class="px-3 py-2 text-xs text-gray-500 font-semibold uppercase">Jugadores</div>`;
+    playerResults.slice(0, 5).forEach((p: any) => {
+      html += `<button onclick="window.switchTab('players'); document.getElementById('global-search').value=''; window.handleSearch('')" class="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 flex items-center gap-2">
+        <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>${p.name} <span class="text-gray-500">(${p.position || 'Sin posición'})</span>
+      </button>`;
+    });
+  }
+  if (!html) {
+    html = `<div class="px-3 py-4 text-sm text-gray-500 text-center">Sin resultados</div>`;
+  }
+  dropdown.innerHTML = html;
+  dropdown.classList.remove("hidden");
+};
+
+document.addEventListener("click", (e) => {
+  const dropdown = document.getElementById("search-results-dropdown");
+  const searchInput = document.getElementById("global-search");
+  if (dropdown && searchInput && !searchInput.contains(e.target as Node) && !dropdown.contains(e.target as Node)) {
+    dropdown.classList.add("hidden");
+  }
+});
+
+// ==================== DELETE PLAYER ====================
+
+(window as any).deletePlayer = async (playerId: number) => {
+  if (!confirm("¿Estás seguro de eliminar este jugador? También se eliminará su usuario del sistema.")) return;
+  try {
+    await deletePlayerApi(playerId);
+    showToast("Jugador eliminado correctamente", "info");
+    render();
+  } catch (error: any) {
+    showToast(error.message || "Error al eliminar jugador", "error");
+  }
+};
+
+// ==================== VIEW ATTENDANCE (ADMIN) ====================
+
+(window as any).viewAttendance = async (trainingId: number) => {
+  try {
+    const attendance = await getAttendanceForTraining(trainingId);
+    const training = globalTrainings.find((t: any) => t.id === trainingId);
+    const allPlayers = globalPlayers;
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+    const modal = document.createElement("div");
+    modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+    modal.innerHTML = `
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-yellow-500">Asistencia: ${training?.title || ''}</h3>
+        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+      <p class="text-gray-400 mb-6">${formatDate(training?.date || '')}</p>
+      <div class="space-y-3">
+        ${allPlayers.length === 0 ? '<p class="text-gray-500 text-center py-6">No hay jugadores registrados</p>' : allPlayers.map((p: any) => {
+          const record = attendance.find((a: any) => a.player_id === p.id);
+          const status = record?.status || 'pending';
+          const statusConfig: Record<string, { label: string; bg: string; dot: string }> = {
+            attending: { label: 'Asistió', bg: 'bg-green-500/10 border-green-500/30', dot: 'bg-green-500' },
+            not_attending: { label: 'No Asistió', bg: 'bg-red-500/10 border-red-500/30', dot: 'bg-red-500' },
+            pending: { label: 'Sin respuesta', bg: 'bg-yellow-500/10 border-yellow-500/30', dot: 'bg-yellow-500' }
+          };
+          const cfg = statusConfig[status] || statusConfig.pending;
+          return `<div class="flex items-center justify-between ${cfg.bg} border rounded-lg p-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-white font-bold">${p.name?.charAt(0).toUpperCase() || '?'}</div>
+              <div>
+                <p class="font-medium text-white">${p.name || 'Sin nombre'}</p>
+                <p class="text-sm text-gray-400">${p.position || 'Sin posición'} · #${p.jersey_number || '?'}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 ${cfg.dot} rounded-full"></span>
+              <span class="text-sm font-medium text-white">${cfg.label}</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="flex gap-6 mt-6 pt-4 border-t border-gray-800">
+        <div class="flex items-center gap-2"><span class="w-3 h-3 bg-green-500 rounded-full"></span><span class="text-sm text-gray-400">Asistió</span></div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 bg-red-500 rounded-full"></span><span class="text-sm text-gray-400">No Asistió</span></div>
+        <div class="flex items-center gap-2"><span class="w-3 h-3 bg-yellow-500 rounded-full"></span><span class="text-sm text-gray-400">Sin respuesta</span></div>
+      </div>`;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  } catch (error: any) {
+    showToast(error.message || "Error al cargar asistencia", "error");
+  }
+};
+
 // ==================== INIT ====================
 
 const showCompletePlayerModal = (user: any, player: any = null) => {
@@ -1123,44 +1400,6 @@ const showCompletePlayerModal = (user: any, player: any = null) => {
   });
 };
 
-const showProfileCompletionBanner = (user: any) => {
-  const existing = document.getElementById("profile-banner");
-  if (existing) return; // Ya existe
-
-  const banner = document.createElement("div");
-  banner.id = "profile-banner";
-  banner.className = "fixed top-20 left-4 right-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 z-40 shadow-lg";
-  banner.innerHTML = `
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
-          <svg class="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-          </svg>
-        </div>
-        <div>
-          <p class="text-yellow-500 font-semibold">Completa tu perfil de jugador</p>
-          <p class="text-yellow-500/80 text-sm">Para acceder a todas las funciones, completa tu información de jugador.</p>
-        </div>
-      </div>
-      <div class="flex gap-2">
-        <button id="complete-profile-btn" class="px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 font-bold text-sm">Completar ahora</button>
-        <button id="dismiss-banner-btn" class="px-3 py-2 border border-yellow-500/30 text-yellow-500 rounded-lg hover:bg-yellow-500/20 text-sm">Después</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(banner);
-
-  document.getElementById("complete-profile-btn")?.addEventListener("click", () => {
-    banner.remove();
-    showCompletePlayerModal(user);
-  });
-
-  document.getElementById("dismiss-banner-btn")?.addEventListener("click", () => {
-    banner.remove();
-  });
-};
-
 render = () => {
   const user = getCurrentAuthUser();
   if (user) { 
@@ -1243,3 +1482,4 @@ if (session) {
 } else {
   renderAuthForm(true);
 }
+

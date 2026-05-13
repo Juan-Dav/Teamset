@@ -224,6 +224,64 @@ export const updateAttendanceStreak = async (req: Request, res: Response) => {
 
 /**
  * @swagger
+ * /api/players/create-with-user:
+ *   post:
+ *     summary: Crear un nuevo jugador con su usuario (nombre, email, password, celular, equipo)
+ *     tags: [Jugadores]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *               - team_id
+ *               - position
+ *               - jersey_number
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               team_id:
+ *                 type: integer
+ *               position:
+ *                 type: string
+ *               jersey_number:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Jugador creado con usuario
+ */
+export const createPlayerWithUser = async (req: Request, res: Response) => {
+  try {
+    const { name, email, password, phone, team_id, position, jersey_number } = req.body;
+    const [existing]: any = await pool.query("SELECT id FROM usuarios WHERE email = ?", [email]);
+    if (existing.length > 0) return res.status(400).json({ message: "El email ya está registrado" });
+    const [userResult]: any = await pool.query(
+      "INSERT INTO usuarios (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)",
+      [name, email, password, phone || null, "player"]
+    );
+    const userId = userResult.insertId;
+    await pool.query(
+      "INSERT INTO jugadores (user_id, team_id, position, jersey_number) VALUES (?, ?, ?, ?)",
+      [userId, team_id, position, jersey_number]
+    );
+    res.status(201).json({ message: "Jugador creado exitosamente", user_id: userId });
+  } catch (error) {
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+};
+
+/**
+ * @swagger
  * /api/players/{id}:
  *   delete:
  *     summary: Eliminar jugador
@@ -240,8 +298,13 @@ export const updateAttendanceStreak = async (req: Request, res: Response) => {
  */
 export const deletePlayer = async (req: Request, res: Response) => {
   try {
-    await pool.query("DELETE FROM jugadores WHERE id = ?", [req.params.id]);
-    res.json({ message: "Jugador eliminado" });
+    const [rows]: any = await pool.query("SELECT user_id FROM jugadores WHERE id = ?", [req.params.id]);
+    if (rows.length > 0) {
+      const userId = rows[0].user_id;
+      await pool.query("DELETE FROM jugadores WHERE id = ?", [req.params.id]);
+      await pool.query("DELETE FROM usuarios WHERE id = ?", [userId]);
+    }
+    res.json({ message: "Jugador y usuario eliminados" });
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });
   }

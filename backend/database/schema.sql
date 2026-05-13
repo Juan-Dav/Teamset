@@ -113,6 +113,19 @@ CREATE TABLE IF NOT EXISTS asistencia (
   UNIQUE KEY unique_asistencia (training_id, player_id)
 );
 
+-- Training surveys table
+CREATE TABLE IF NOT EXISTS encuestas_entrenamiento (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  training_id INT NOT NULL,
+  player_id INT NOT NULL,
+  satisfaction ENUM('happy', 'neutral', 'sad') NOT NULL,
+  suggestion TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (training_id) REFERENCES entrenamientos(id) ON DELETE CASCADE,
+  FOREIGN KEY (player_id) REFERENCES jugadores(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_survey (training_id, player_id)
+);
+
 -- Team performance table (general team stats 1-10 rating)
 CREATE TABLE IF NOT EXISTS rendimiento_equipo (
   id INT PRIMARY KEY AUTO_INCREMENT,

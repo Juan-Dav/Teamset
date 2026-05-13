@@ -180,6 +180,20 @@ export const createPlayerProfile = async (data: { user_id: number; team_id: numb
   return handleResponse(res);
 };
 
+export const createPlayerWithUser = async (data: { name: string; email: string; password: string; phone: string; team_id: number; position: string; jersey_number: number }) => {
+  const res = await fetch(`${API_URL}/players/create-with-user`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+};
+
+export const deletePlayer = async (id: number) => {
+  const res = await fetch(`${API_URL}/players/${id}`, { method: "DELETE" });
+  return handleResponse(res);
+};
+
 export const updatePlayerStats = async (id: number, data: any) => {
   const res = await fetch(`${API_URL}/players/${id}/stats`, {
     method: "PUT",

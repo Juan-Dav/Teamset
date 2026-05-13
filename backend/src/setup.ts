@@ -17,20 +17,9 @@ export const setup = async () => {
     await connection.query("CREATE DATABASE IF NOT EXISTS teamset_db");
     await connection.query("USE teamset_db");
 
-    console.log("Eliminando datos existentes...");
+    console.log("Corrigiendo tabla encuestas_entrenamiento...");
     await connection.query("SET FOREIGN_KEY_CHECKS = 0");
-    // Remover TRUNCATE para preservar datos existentes
-    // await connection.query("TRUNCATE TABLE notification_recipients");
-    // await connection.query("TRUNCATE TABLE notifications");
-    // await connection.query("TRUNCATE TABLE rendimiento_equipo");
-    // await connection.query("TRUNCATE TABLE estadisticas_partido");
-    // await connection.query("TRUNCATE TABLE partidos");
-    // await connection.query("TRUNCATE TABLE asistencia");
-    // await connection.query("TRUNCATE TABLE asignaciones_entrenamiento");
-    // await connection.query("TRUNCATE TABLE entrenamientos");
-    // await connection.query("TRUNCATE TABLE jugadores");
-    // await connection.query("TRUNCATE TABLE equipos");
-    // await connection.query("TRUNCATE TABLE usuarios");
+    await connection.query("DROP TABLE IF EXISTS encuestas_entrenamiento");
     await connection.query("SET FOREIGN_KEY_CHECKS = 1");
 
     console.log("Ejecutando schema.sql...");
@@ -39,7 +28,6 @@ export const setup = async () => {
 
     console.log("Asegurando columnas faltantes...");
     await connection.query("ALTER TABLE entrenamientos ADD COLUMN IF NOT EXISTS survey_question TEXT");
-    await connection.query("ALTER TABLE encuestas_entrenamiento ADD COLUMN IF NOT EXISTS suggestion TEXT");
 
     console.log("Creando/actualizando usuario admin (ID 1)...");
     const adminEmail = "admin@teamset.com";

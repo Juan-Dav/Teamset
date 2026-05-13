@@ -58,7 +58,8 @@ export const createSurvey = async (req: Request, res: Response) => {
     
     res.json({ message: "Encuesta guardada" });
   } catch (error) {
-    res.status(500).json({ message: "Error en el servidor", error });
+    const errMsg = error instanceof Error ? error.message : "Error desconocido";
+    res.status(500).json({ message: errMsg, error });
   }
 };
 
@@ -90,7 +91,8 @@ export const getSurveyByTraining = async (req: Request, res: Response) => {
     );
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: "Error en el servidor", error });
+    const errMsg = error instanceof Error ? error.message : "Error desconocido";
+    res.status(500).json({ message: errMsg, error });
   }
 };
 
@@ -123,6 +125,7 @@ export const getPlayerSurvey = async (req: Request, res: Response) => {
     );
     res.json(rows[0] || null);
   } catch (error) {
-    res.status(500).json({ message: "Error en el servidor", error });
+    const errMsg = error instanceof Error ? error.message : "Error desconocido";
+    res.status(500).json({ message: errMsg, error });
   }
 };
