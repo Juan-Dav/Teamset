@@ -98,12 +98,13 @@ export const getMatchById = async (req: Request, res: Response) => {
  */
 export const createMatch = async (req: Request, res: Response) => {
   try {
-    const { team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description } = req.body;
+    const { team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, location, description, player_stats } = req.body;
     const [resultDb]: any = await pool.query(
-      "INSERT INTO partidos (team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description]
+      "CALL sp_guardar_resultado_partido(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [team_id, opponent, match_date, sets_won, sets_lost, points_scored || 0, points_conceded || 0, location || null, description || null, JSON.stringify(player_stats || [])]
     );
-    res.status(201).json({ id: resultDb.insertId, team_id, opponent, match_date, result });
+    const matchId = resultDb?.[0]?.[0]?.match_id ?? resultDb?.insertId;
+    res.status(201).json({ id: matchId, team_id, opponent, match_date });
   } catch (error) {
     res.status(500).json({ message: "Error en el servidor", error });
   }
@@ -153,10 +154,10 @@ export const createMatch = async (req: Request, res: Response) => {
  */
 export const updateMatch = async (req: Request, res: Response) => {
   try {
-    const { opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description } = req.body;
+    const { team_id, opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, location, description, player_stats } = req.body;
     await pool.query(
-      "UPDATE partidos SET opponent = ?, match_date = ?, sets_won = ?, sets_lost = ?, points_scored = ?, points_conceded = ?, result = ?, location = ?, description = ? WHERE id = ?",
-      [opponent, match_date, sets_won, sets_lost, points_scored, points_conceded, result, location, description, req.params.id]
+      "CALL sp_guardar_resultado_partido(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [req.params.id, team_id, opponent, match_date, sets_won, sets_lost, points_scored || 0, points_conceded || 0, location || null, description || null, JSON.stringify(player_stats || [])]
     );
     res.json({ message: "Partido actualizado" });
   } catch (error) {

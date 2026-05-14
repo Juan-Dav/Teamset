@@ -9,6 +9,7 @@ import matchRoutes from "./modules/matches/match.routes";
 import performanceRoutes from "./modules/performance/performance.routes";
 import attendanceRoutes from "./modules/attendance/attendance.routes";
 import trainingSurveyRoutes from "./modules/training-surveys/training-survey.routes";
+import standingsRoutes from "./modules/standings/standings.routes";
 
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
@@ -31,5 +32,6 @@ app.use("/api/matches", matchRoutes);
 app.use("/api/performance", performanceRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/training-surveys", trainingSurveyRoutes);
+app.use("/api/standings", standingsRoutes);
 
 export default app;

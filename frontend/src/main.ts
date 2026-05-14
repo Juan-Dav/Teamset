@@ -21,9 +21,10 @@ import {
   createPlayerWithUser,
   deletePlayer as deletePlayerApi,
   getMatches,
-  createMatch,
+  saveMatchResult,
   getPerformance,
   createPerformance,
+  getMatchPlayerStats,
   updateProfile,
   setAttendance,
   getAttendanceForTraining,
@@ -31,9 +32,10 @@ import {
   getTrainingSurveys,
   getPlayerSurvey,
   updatePlayerStats as updatePlayerStatsApi,
+  getStandings,
 } from "./api/api";
 
-let activeDashboardTab: "overview" | "team" | "players" | "matches" | "trainings" | "attendance" | "performance" | "player-stats" | "surveys" = "overview";
+let activeDashboardTab: "overview" | "team" | "players" | "matches" | "standings" | "trainings" | "attendance" | "performance" | "player-stats" | "surveys" = "overview";
 
 let render: () => void;
 
@@ -158,6 +160,7 @@ const renderDashboard = async () => {
   const players = await getPlayers();
   const matches = await getMatches();
   const performance = await getPerformance();
+  const standings = await getStandings().catch(() => []);
   const users = await getTeamUsers().catch(() => []);
   
   // Store globally for access in survey functions
@@ -200,6 +203,7 @@ const renderDashboard = async () => {
               ["team", "Equipo", "12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"],
               ["players", "Jugadores", "16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"],
               ["matches", "Partidos", "6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"],
+              ["standings", "Posiciones", "M3 4h18M3 8h18M3 12h18M3 16h18M3 20h18"],
               ["trainings", "Entrenamientos", "9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"],
               ["attendance", "Asistencia", "9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"],
               ["player-stats", "Estadísticas", "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"],
@@ -239,6 +243,7 @@ const renderDashboard = async () => {
             ${[["overview", "Panel", "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"],
               ["trainings", "Entrenamientos", "9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"],
               ["matches", "Partidos", "6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"],
+              ["standings", "Posiciones", "M3 4h18M3 8h18M3 12h18M3 16h18M3 20h18"],
               ["player-stats", "Estadísticas", "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"],
                 ["performance", "Rendimiento", "15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"],
                 ["surveys", "Encuestas", "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"]
@@ -345,17 +350,60 @@ const renderDashboard = async () => {
                       <div>
                         <h3 class="font-semibold text-white">vs ${m.opponent}</h3>
                         <p class="text-sm text-gray-400">${formatDate(m.match_date)} · ${m.location || 'Sin ubicación'}</p>
+                        <p class="text-xs text-gray-500 mt-1">Pts: ${m.points_scored || 0}-${m.points_conceded || 0}</p>
                       </div>
-                      <div class="text-right">
+                      <div class="text-right flex items-center gap-3">
                         <span class="px-3 py-1 rounded-lg text-sm font-bold ${m.result === 'win' ? 'bg-green-500/20 text-green-500' : m.result === 'loss' ? 'bg-red-500/20 text-red-500' : 'bg-gray-500/20 text-gray-400'}">${m.result === 'win' ? 'Victoria' : m.result === 'loss' ? 'Derrota' : 'Empate'}</span>
-                        <p class="text-xs text-gray-400 mt-1">Sets: ${m.sets_won || 0}-${m.sets_lost || 0}</p>
+                        <p class="text-xs text-gray-400">Sets: ${m.sets_won || 0}-${m.sets_lost || 0}</p>
+                        <button onclick="window.viewMatchStats(${m.id})" class="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-sm hover:bg-blue-500/20">Stats</button>
                       </div>
                     </div>
                   </div>`).join('')}
               </div>
             </div>
 
-              <!-- TRAININGS -->
+            <!-- STANDINGS -->
+            <div id="tab-standings" class="${activeDashboardTab === "standings" ? "" : "hidden"}">
+              <div class="flex items-center justify-between mb-6">
+                <div><h1 class="text-2xl font-bold text-white mb-1">Tabla de Posiciones</h1><p class="text-gray-400">Clasificación automática según resultados de partidos</p></div>
+              </div>
+              ${standings.length === 0 ? '<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center"><p class="text-gray-500">No hay datos suficientes para calcular posiciones</p></div>' : `
+              <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                <table class="w-full text-left">
+                  <thead>
+                    <tr class="border-b border-gray-800 text-gray-400 text-sm">
+                      <th class="px-4 py-3 font-medium">#</th>
+                      <th class="px-4 py-3 font-medium">Equipo</th>
+                      <th class="px-4 py-3 font-medium text-center">PJ</th>
+                      <th class="px-4 py-3 font-medium text-center">G</th>
+                      <th class="px-4 py-3 font-medium text-center">P</th>
+                      <th class="px-4 py-3 font-medium text-center">E</th>
+                      <th class="px-4 py-3 font-medium text-center">SF</th>
+                      <th class="px-4 py-3 font-medium text-center">SC</th>
+                      <th class="px-4 py-3 font-medium text-center">DS</th>
+                      <th class="px-4 py-3 font-medium text-center">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${standings.map((s: any, i: number) => `
+                      <tr class="border-b border-gray-800/50 hover:bg-gray-800/30 transition-all ${i < 3 ? 'text-yellow-500' : 'text-white'}">
+                        <td class="px-4 py-3 font-bold">${i + 1}</td>
+                        <td class="px-4 py-3 font-semibold">${s.team_name}</td>
+                        <td class="px-4 py-3 text-center">${s.matches_played}</td>
+                        <td class="px-4 py-3 text-center text-green-500">${s.wins}</td>
+                        <td class="px-4 py-3 text-center text-red-500">${s.losses}</td>
+                        <td class="px-4 py-3 text-center text-gray-400">${s.draws}</td>
+                        <td class="px-4 py-3 text-center">${s.sets_won}</td>
+                        <td class="px-4 py-3 text-center">${s.sets_lost}</td>
+                        <td class="px-4 py-3 text-center font-mono">${s.set_difference > 0 ? '+' : ''}${s.set_difference}</td>
+                        <td class="px-4 py-3 text-center font-bold text-lg">${s.points}</td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>`}
+            </div>
+
+            <!-- TRAININGS -->
             <div id="tab-trainings" class="${activeDashboardTab === "trainings" ? "" : "hidden"}">
               <div class="flex items-center justify-between mb-6">
                 <div><h1 class="text-2xl font-bold text-white mb-1">Entrenamientos</h1><p class="text-gray-400">Planifica y gestiona los entrenamientos</p></div>
@@ -1015,28 +1063,207 @@ const loadAttendanceStatus = async () => {
   });
 };
 
-(window as any).showAddMatch = () => {
-  showEditModal("Nuevo Partido", [
-    { label: "ID del Equipo", value: "", id: "match-team-id" },
-    { label: "Oponente", value: "", id: "match-opponent" },
-    { label: "Fecha", value: "", id: "match-date", type: "date" },
-    { label: "Sets ganados", value: "0", id: "match-sets-won", type: "number" },
-    { label: "Sets perdidos", value: "0", id: "match-sets-lost", type: "number" },
-    { label: "Ubicación", value: "", id: "match-location" },
-    { label: "Resultado (win/loss/draw)", value: "win", id: "match-result" }
-  ], async (v) => { 
-    await createMatch({ 
-      team_id: parseInt(v["match-team-id"]), 
-      opponent: v["match-opponent"], 
-      match_date: v["match-date"],
-      sets_won: parseInt(v["match-sets-won"]),
-      sets_lost: parseInt(v["match-sets-lost"]),
-      result: v["match-result"],
-      location: v["match-location"]
-    }); 
-    showToast("Partido creado"); 
-    render(); 
+(window as any).showBatchPlayerStats = (players: any[]): Promise<any[]> => {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+    const modal = document.createElement("div");
+    modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-3xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+    modal.innerHTML = `
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-yellow-500">Estadísticas por Jugador</h3>
+        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+      <p class="text-gray-400 mb-4 text-sm">Ingresa las estadísticas de cada jugador para este partido</p>
+      <div class="space-y-4">
+        ${players.map((p: any) => `
+          <div class="bg-gray-800/50 rounded-lg p-4">
+            <h4 class="font-semibold text-white mb-3">${p.name || 'Jugador'} <span class="text-gray-500 text-sm">#${p.jersey_number || ''}</span></h4>
+            <div class="grid grid-cols-4 gap-3">
+              <div><label class="block text-xs text-gray-400 mb-1">Ataques</label><input type="number" id="ps-${p.id}-attacks" value="0" min="0" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 text-white rounded-lg text-sm"></div>
+              <div><label class="block text-xs text-gray-400 mb-1">Bloqueos</label><input type="number" id="ps-${p.id}-blocks" value="0" min="0" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 text-white rounded-lg text-sm"></div>
+              <div><label class="block text-xs text-gray-400 mb-1">Saques</label><input type="number" id="ps-${p.id}-serves" value="0" min="0" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 text-white rounded-lg text-sm"></div>
+              <div><label class="block text-xs text-gray-400 mb-1">Defensas</label><input type="number" id="ps-${p.id}-digs" value="0" min="0" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 text-white rounded-lg text-sm"></div>
+              <div><label class="block text-xs text-gray-400 mb-1">Asistencias</label><input type="number" id="ps-${p.id}-assists" value="0" min="0" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 text-white rounded-lg text-sm"></div>
+              <div><label class="block text-xs text-gray-400 mb-1">Aces</label><input type="number" id="ps-${p.id}-aces" value="0" min="0" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 text-white rounded-lg text-sm"></div>
+              <div><label class="block text-xs text-gray-400 mb-1">Errores</label><input type="number" id="ps-${p.id}-errors" value="0" min="0" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 text-white rounded-lg text-sm"></div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="flex gap-3 pt-6">
+        <button type="button" onclick="this.closest('.fixed').remove()" class="flex-1 px-4 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium">Cancelar</button>
+        <button type="button" id="batch-save-btn" class="flex-1 px-4 py-3 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 font-bold">Guardar Estadísticas</button>
+      </div>
+    `;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    document.getElementById("batch-save-btn")?.addEventListener("click", () => {
+      const stats = players.map((p: any) => ({
+        player_id: p.id,
+        attacks: parseInt((document.getElementById(`ps-${p.id}-attacks`) as HTMLInputElement).value) || 0,
+        blocks: parseInt((document.getElementById(`ps-${p.id}-blocks`) as HTMLInputElement).value) || 0,
+        serves: parseInt((document.getElementById(`ps-${p.id}-serves`) as HTMLInputElement).value) || 0,
+        digs: parseInt((document.getElementById(`ps-${p.id}-digs`) as HTMLInputElement).value) || 0,
+        assists: parseInt((document.getElementById(`ps-${p.id}-assists`) as HTMLInputElement).value) || 0,
+        aces: parseInt((document.getElementById(`ps-${p.id}-aces`) as HTMLInputElement).value) || 0,
+        errors: parseInt((document.getElementById(`ps-${p.id}-errors`) as HTMLInputElement).value) || 0,
+      }));
+      overlay.remove();
+      resolve(stats);
+    });
   });
+};
+
+(window as any).showAddMatch = () => {
+  const user = getCurrentAuthUser();
+  const existing = document.getElementById("modal-overlay");
+  if (existing) existing.remove();
+  const overlay = document.createElement("div");
+  overlay.id = "modal-overlay";
+  overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+  const modal = document.createElement("div");
+  modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-md mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+  modal.innerHTML = `
+    <h3 class="text-xl font-bold text-yellow-500 mb-6">Nuevo Partido</h3>
+    <form id="match-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Equipo</label>
+        <select id="match-team-id" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required>
+          <option value="">Selecciona un equipo</option>
+          ${globalTeams.map((t: any) => `<option value="${t.id}">${t.name}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Oponente</label>
+        <select id="match-opponent" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required>
+          <option value="">Selecciona un oponente</option>
+          ${globalTeams.map((t: any) => `<option value="${t.name}">${t.name}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Fecha</label>
+        <input id="match-date" type="date" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" required />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">Sets ganados</label>
+          <input id="match-sets-won" type="number" value="0" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">Sets perdidos</label>
+          <input id="match-sets-lost" type="number" value="0" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">Pts anotados</label>
+          <input id="match-points-for" type="number" value="0" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1.5">Pts recibidos</label>
+          <input id="match-points-against" type="number" value="0" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-1.5">Ubicación</label>
+        <input id="match-location" type="text" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent outline-none" />
+      </div>
+      <div class="flex gap-3 pt-4">
+        <button type="button" id="modal-cancel" class="flex-1 px-4 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium">Cancelar</button>
+        <button type="submit" class="flex-1 px-4 py-3 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 font-bold">Guardar</button>
+      </div>
+    </form>`;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  document.getElementById("modal-cancel")?.addEventListener("click", () => overlay.remove());
+
+  document.getElementById("match-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const getVal = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
+    const teamId = parseInt(getVal("match-team-id"));
+    if (!teamId) { showToast("Selecciona un equipo", "error"); return; }
+    const matchData: any = {
+      team_id: teamId,
+      opponent: getVal("match-opponent"),
+      match_date: getVal("match-date"),
+      sets_won: parseInt(getVal("match-sets-won")) || 0,
+      sets_lost: parseInt(getVal("match-sets-lost")) || 0,
+      points_scored: parseInt(getVal("match-points-for")) || 0,
+      points_conceded: parseInt(getVal("match-points-against")) || 0,
+      location: getVal("match-location") || null,
+    };
+    if (user.role === 'admin') {
+      const addStats = confirm("¿Deseas agregar estadísticas individuales de jugadores?");
+      if (addStats) {
+        try {
+          const players = await getTeamPlayers(teamId);
+          if (players.length === 0) {
+            showToast("El equipo no tiene jugadores", "error");
+            return;
+          }
+          matchData.player_stats = await (window as any).showBatchPlayerStats(players);
+        } catch {
+          showToast("Error al cargar jugadores", "error");
+          return;
+        }
+      }
+    }
+    overlay.remove();
+    await saveMatchResult(matchData);
+    showToast("Partido creado con estadísticas");
+    render();
+  });
+};
+
+(window as any).viewMatchStats = async (matchId: number) => {
+  try {
+    const stats = await getMatchPlayerStats(matchId);
+    const overlay = document.createElement("div");
+    overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+    const modal = document.createElement("div");
+    modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+    modal.innerHTML = `
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-bold text-yellow-500">Estadísticas del Partido</h3>
+        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+      ${stats.length === 0 ? '<p class="text-gray-500 text-center py-6">No hay estadísticas registradas para este partido</p>' : `
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b border-gray-800 text-gray-400 text-sm">
+            <th class="px-3 py-2 font-medium">Jugador</th>
+            <th class="px-3 py-2 font-medium text-center">Ataques</th>
+            <th class="px-3 py-2 font-medium text-center">Bloqueos</th>
+            <th class="px-3 py-2 font-medium text-center">Saque</th>
+            <th class="px-3 py-2 font-medium text-center">Defensa</th>
+            <th class="px-3 py-2 font-medium text-center">Asistencias</th>
+            <th class="px-3 py-2 font-medium text-center">Aces</th>
+            <th class="px-3 py-2 font-medium text-center">Errores</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${stats.map((s: any) => `
+            <tr class="border-b border-gray-800/50 text-white">
+              <td class="px-3 py-2 font-medium">${s.player_name} <span class="text-gray-500">#${s.jersey_number || ''}</span></td>
+              <td class="px-3 py-2 text-center">${s.attacks || 0}</td>
+              <td class="px-3 py-2 text-center">${s.blocks || 0}</td>
+              <td class="px-3 py-2 text-center">${s.serves || 0}</td>
+              <td class="px-3 py-2 text-center">${s.digs || 0}</td>
+              <td class="px-3 py-2 text-center">${s.assists || 0}</td>
+              <td class="px-3 py-2 text-center text-green-500">${s.aces || 0}</td>
+              <td class="px-3 py-2 text-center text-red-500">${s.errors || 0}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`}
+    `;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  } catch (error: any) {
+    showToast(error.message || "Error al cargar estadísticas", "error");
+  }
 };
 
 (window as any).showAddTraining = () => {

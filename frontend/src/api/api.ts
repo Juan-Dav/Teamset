@@ -233,6 +233,11 @@ export const deleteMatch = async (id: number) => {
   return handleResponse(res);
 };
 
+export const getMatchPlayerStats = async (matchId: number) => {
+  const res = await fetch(`${API_URL}/matches/${matchId}/stats`);
+  return handleResponse(res);
+};
+
 // ==================== PERFORMANCE ====================
 
 export const getPerformance = async () => {
@@ -299,6 +304,23 @@ export const getPlayerSurvey = async (trainingId: number, playerId: number) => {
   const res = await fetch(`${API_URL}/training-surveys/training/${trainingId}/player/${playerId}`);
   if (!res.ok) return null;
   return res.json();
+};
+
+// ==================== STANDINGS ====================
+
+export const getStandings = async (teamId?: number) => {
+  const params = teamId ? `?team_id=${teamId}` : "";
+  const res = await fetch(`${API_URL}/standings${params}`);
+  return handleResponse(res);
+};
+
+export const saveMatchResult = async (data: any) => {
+  const res = await fetch(`${API_URL}/matches`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return handleResponse(res);
 };
 
 // ==================== STATS ====================
