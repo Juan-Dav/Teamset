@@ -17,9 +17,10 @@ export const setup = async () => {
     await connection.query("CREATE DATABASE IF NOT EXISTS teamset_db");
     await connection.query("USE teamset_db");
 
-    console.log("Corrigiendo tabla encuestas_entrenamiento...");
+    console.log("Corrigiendo tablas obsoletas...");
     await connection.query("SET FOREIGN_KEY_CHECKS = 0");
     await connection.query("DROP TABLE IF EXISTS encuestas_entrenamiento");
+    await connection.query("DROP TABLE IF EXISTS rendimiento_equipo");
     await connection.query("SET FOREIGN_KEY_CHECKS = 1");
 
     console.log("Ejecutando schema.sql (tablas)...");

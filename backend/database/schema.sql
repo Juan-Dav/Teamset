@@ -125,23 +125,6 @@ CREATE TABLE IF NOT EXISTS encuestas_entrenamiento (
   FOREIGN KEY (player_id) REFERENCES jugadores(id) ON DELETE CASCADE,
   UNIQUE KEY unique_survey (training_id, player_id)
 );
-
--- Team performance table (general team stats 1-10 rating)
-CREATE TABLE IF NOT EXISTS rendimiento_equipo (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  team_id INT NOT NULL,
-  performance_date DATE NOT NULL,
-  court_performance INT CHECK (court_performance BETWEEN 1 AND 10),
-  serve_performance INT CHECK (serve_performance BETWEEN 1 AND 10),
-  attack_performance INT CHECK (attack_performance BETWEEN 1 AND 10),
-  block_performance INT CHECK (block_performance BETWEEN 1 AND 10),
-  defense_performance INT CHECK (defense_performance BETWEEN 1 AND 10),
-  overall_rating DECIMAL(3,1) CHECK (overall_rating BETWEEN 1 AND 10),
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES equipos(id) ON DELETE CASCADE
-);
-
 -- Stored procedures moved to procedures.sql
 -- They are executed separately in setup.ts to avoid DELIMITER issues
 

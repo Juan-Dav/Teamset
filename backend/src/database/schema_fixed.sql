@@ -139,44 +139,6 @@ CREATE TABLE IF NOT EXISTS asistencia (
   UNIQUE KEY UNIQUE_asistencia (training_id, player_id)
 );
 
--- Team performance table (FIVB calculated stats)
-CREATE TABLE IF NOT EXISTS rendimiento_equipo (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  team_id INT NOT NULL,
-  performance_date DATE NOT NULL,
-  total_attacks INT DEFAULT 0,
-  successful_attacks INT DEFAULT 0,
-  attack_errors INT DEFAULT 0,
-  attack_efficiency DECIMAL(5,2) GENERATED ALWAYS AS (
-    CASE WHEN total_attacks > 0 
-    THEN ((successful_attacks - attack_errors) / total_attacks) * 100 
-    ELSE 0 END
-  ) STORED,
-  total_serves INT DEFAULT 0,
-  aces INT DEFAULT 0,
-  serve_errors INT DEFAULT 0,
-  serve_efficiency DECIMAL(5,2) GENERATED ALWAYS AS (
-    CASE WHEN total_serves > 0 
-    THEN ((aces - serve_errors) / total_serves) * 100 
-    ELSE 0 END
-  ) STORED,
-  total_blocks INT DEFAULT 0,
-  successful_blocks INT DEFAULT 0,
-  block_efficiency DECIMAL(5,2) GENERATED ALWAYS AS (
-    CASE WHEN total_blocks > 0 
-    THEN (successful_blocks / total_blocks) * 100 
-    ELSE 0 END
-  ) STORED,
-  overall_rating DECIMAL(5,2) GENERATED ALWAYS AS (
-    CASE WHEN (total_attacks + total_serves + total_blocks) > 0 
-    THEN ((attack_efficiency + serve_efficiency + block_efficiency) / 3) 
-    ELSE 0 END
-  ) STORED,
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (team_id) REFERENCES equipos(id) ON DELETE CASCADE
-);
-
 -- Training survey table (player feedback with emojis)
 CREATE TABLE IF NOT EXISTS encuestas_entrenamiento (
   id INT PRIMARY KEY AUTO_INCREMENT,
