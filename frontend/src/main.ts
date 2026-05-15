@@ -512,16 +512,20 @@ const renderDashboard = async () => {
               <div class="space-y-4">
                 ${trainings.filter((t: any) => t.survey_question).length === 0 ? '<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center"><p class="text-gray-500">No hay encuestas disponibles</p></div>' : trainings.filter((t: any) => t.survey_question).map((t: any) => {
                   const isPast = t.date < today;
-                  return `<div class="bg-gray-900 border ${isPast ? 'border-gray-800' : 'border-yellow-500/30'} rounded-xl p-5">
+                  const alreadyResponded = user.role === 'player' && playerSurveyResponses[t.id];
+                  return `<div class="bg-gray-900 border rounded-xl p-5 cursor-pointer transition-all ${alreadyResponded ? 'border-green-500/30 hover:border-green-500/50' : isPast ? 'border-gray-800' : 'border-yellow-500/30 hover:border-yellow-500/50'}" onclick="${alreadyResponded ? `window.respondToSurvey(${t.id})` : user.role === 'player' ? `window.respondToSurvey(${t.id})` : ''}">
                     <div class="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 class="font-semibold text-white">${t.title}</h3>
-                        <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+                      <div class="flex items-center gap-3">
+                        ${alreadyResponded ? `<div class="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></div>` : ''}
+                        <div>
+                          <h3 class="font-semibold text-white">${t.title}</h3>
+                          <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+                        </div>
                       </div>
                       <div class="flex gap-2">
-                        ${user.role === 'admin' ? `<button onclick="window.editSurveyQuestion(${t.id})" class="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-sm hover:bg-purple-500/20">Editar</button>` : ''}
-                        ${user.role === 'admin' ? `<button onclick="window.viewSurveyResults(${t.id})" class="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-sm hover:bg-blue-500/20">Ver Resultados</button>` : ''}
-                        ${user.role === 'player' ? (playerSurveyResponses[t.id] ? `<button disabled class="px-3 py-1.5 bg-gray-600/50 text-gray-400 rounded-lg text-sm cursor-not-allowed">✓ Encuesta respondida</button>` : `<button onclick="window.respondToSurvey(${t.id})" class="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-sm hover:bg-green-500/20">Responder</button>`) : ''}
+                        ${user.role === 'admin' ? `<button onclick="event.stopPropagation(); window.editSurveyQuestion(${t.id})" class="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-sm hover:bg-purple-500/20">Editar</button>` : ''}
+                        ${user.role === 'admin' ? `<button onclick="event.stopPropagation(); window.viewSurveyResults(${t.id})" class="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-sm hover:bg-blue-500/20">Ver Resultados</button>` : ''}
+                        ${alreadyResponded ? `<span class="px-3 py-1.5 bg-green-500/20 text-green-500 rounded-lg text-sm font-bold flex items-center gap-1.5"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>Respondida</span>` : (user.role === 'player' ? `<button onclick="event.stopPropagation(); window.respondToSurvey(${t.id})" class="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-sm hover:bg-green-500/20">Responder</button>` : '')}
                       </div>
                     </div>
                     <div class="bg-gray-800/50 rounded-lg p-4">
