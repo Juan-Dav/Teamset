@@ -22,8 +22,6 @@ import {
   deletePlayer as deletePlayerApi,
   getMatches,
   saveMatchResult,
-  getPerformance,
-  createPerformance,
   getMatchPlayerStats,
   updateProfile,
   setAttendance,
@@ -33,6 +31,7 @@ import {
   getPlayerSurvey,
   updatePlayerStats as updatePlayerStatsApi,
   getStandings,
+  getTeamPerformanceFromStats,
 } from "./api/api";
 
 let activeDashboardTab: "overview" | "team" | "players" | "matches" | "standings" | "trainings" | "attendance" | "performance" | "player-stats" | "surveys" = "overview";
@@ -43,6 +42,7 @@ let render: () => void;
 let globalTrainings: any[] = [];
 let globalTeams: any[] = [];
 let globalPlayers: any[] = [];
+let globalMatches: any[] = [];
 let getTeamUsersCached: any[] = [];
 
 const formatDate = (dateStr: string): string => {
@@ -159,7 +159,7 @@ const renderDashboard = async () => {
   const teams = await getTeams();
   const players = await getPlayers();
   const matches = await getMatches();
-  const performance = await getPerformance();
+  const teamStatsPerformance = await getTeamPerformanceFromStats().catch(() => []);
   const standings = await getStandings().catch(() => []);
   const users = await getTeamUsers().catch(() => []);
   
@@ -167,6 +167,7 @@ const renderDashboard = async () => {
   globalTrainings = trainings;
   globalTeams = teams;
   globalPlayers = players;
+  globalMatches = matches;
   getTeamUsersCached = users;
 
   // Fetch player survey responses for surveys tab
@@ -276,9 +277,9 @@ const renderDashboard = async () => {
               </div>
               <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div onclick="window.showMembers()" class="bg-gray-900 border border-gray-800 rounded-xl p-5 cursor-pointer hover:border-yellow-500/50 transition-all"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalUsers || 0}</p><p class="text-sm text-gray-400">Miembros</p></div>
-                <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalPlayers || 0}</p><p class="text-sm text-gray-400">Jugadores</p></div>
-                <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalTrainings || 0}</p><p class="text-sm text-gray-400">Entrenamientos</p></div>
-                <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalMatches || 0}</p><p class="text-sm text-gray-400">Partidos</p></div>
+                <div onclick="window.showPlayersOverview()" class="bg-gray-900 border border-gray-800 rounded-xl p-5 cursor-pointer hover:border-yellow-500/50 transition-all"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalPlayers || 0}</p><p class="text-sm text-gray-400">Jugadores</p></div>
+                <div onclick="window.showTrainingsOverview()" class="bg-gray-900 border border-gray-800 rounded-xl p-5 cursor-pointer hover:border-yellow-500/50 transition-all"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalTrainings || 0}</p><p class="text-sm text-gray-400">Entrenamientos</p></div>
+                <div onclick="window.showMatchesOverview()" class="bg-gray-900 border border-gray-800 rounded-xl p-5 cursor-pointer hover:border-yellow-500/50 transition-all"><div class="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center mb-3"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"/></svg></div><p class="text-3xl font-bold text-white">${stats.totalMatches || 0}</p><p class="text-sm text-gray-400">Partidos</p></div>
               </div>
               <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-8">
                 <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2"><div class="w-2 h-2 bg-yellow-500 rounded-full"></div>Próximos Entrenamientos</h2>
@@ -348,7 +349,7 @@ const renderDashboard = async () => {
                   <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
                     <div class="flex items-center justify-between">
                       <div>
-                        <h3 class="font-semibold text-white">vs ${m.opponent}</h3>
+                        <h3 class="font-semibold text-white">${m.team_name || 'Equipo'} vs ${m.opponent}</h3>
                         <p class="text-sm text-gray-400">${formatDate(m.match_date)} · ${m.location || 'Sin ubicación'}</p>
                         <p class="text-xs text-gray-500 mt-1">Pts: ${m.points_scored || 0}-${m.points_conceded || 0}</p>
                       </div>
@@ -458,30 +459,48 @@ const renderDashboard = async () => {
             <!-- PERFORMANCE -->
             <div id="tab-performance" class="${activeDashboardTab === "performance" ? "" : "hidden"}">
               <div class="flex items-center justify-between mb-6">
-                <div><h1 class="text-2xl font-bold text-white mb-1">Rendimiento del Equipo (FIVB)</h1><p class="text-gray-400">Eficiencia calculada según estándares FIVB</p></div>
-                ${user.role === 'admin' ? `<button onclick="window.showAddPerformance()" class="px-4 py-2.5 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 font-bold flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Agregar</button>` : ''}
+                <div><h1 class="text-2xl font-bold text-white mb-1">Rendimiento del Equipo</h1><p class="text-gray-400">Eficiencia calculada desde estadísticas de jugadores (FIVB)</p></div>
               </div>
-              <div class="space-y-4">
-                ${performance.length === 0 ? '<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center"><p class="text-gray-500">No hay registros de rendimiento</p></div>' : performance.map((p: any) => `
-                  <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+
+              <!-- Team Stats Performance (calculated from player data) -->
+              <div class="mb-6">
+                <h2 class="text-lg font-semibold text-white mb-3">Rendimiento por equipo (desde estadísticas individuales)</h2>
+                ${teamStatsPerformance.length === 0 ? '<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center"><p class="text-gray-500">No hay datos de rendimiento. Registra jugadores y estadísticas primero.</p></div>' : teamStatsPerformance.map((t: any) => `
+                  <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
                     <div class="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 class="font-semibold text-white">${p.team_name || 'Equipo'}</h3>
-                        <p class="text-sm text-gray-400">${formatDate(p.performance_date)}</p>
+                      <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center text-black font-bold text-lg">${t.team_name?.charAt(0).toUpperCase() || '?'}</div>
+                        <div>
+                          <h3 class="font-semibold text-white text-lg">${t.team_name || 'Sin nombre'}</h3>
+                          <p class="text-sm text-gray-400">${t.category || 'Sin categoría'} · ${t.total_players || 0} jugadores · ${t.total_matches_played || 0} partidos</p>
+                        </div>
                       </div>
                       <div class="text-right">
-                        <p class="text-2xl font-bold text-yellow-500">${parseFloat(p.overall_rating || 0).toFixed(1)}%</p>
+                        <p class="text-3xl font-bold text-yellow-500">${parseFloat(t.overall_rating || 0).toFixed(1)}%</p>
                         <p class="text-xs text-gray-400">Eficiencia general</p>
                       </div>
                     </div>
-                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
-                      <div class="bg-gray-800/50 rounded-lg p-3 text-center"><p class="text-xs text-gray-400">Eficiencia Ataque</p><p class="text-lg font-bold text-white">${parseFloat(p.attack_efficiency || 0).toFixed(1)}%</p><p class="text-xs text-gray-500">(${p.successful_attacks || 0}/${p.total_attacks || 0})</p></div>
-                      <div class="bg-gray-800/50 rounded-lg p-3 text-center"><p class="text-xs text-gray-400">Eficiencia Saque</p><p class="text-lg font-bold text-white">${parseFloat(p.serve_efficiency || 0).toFixed(1)}%</p><p class="text-xs text-gray-500">(${p.aces || 0} aces - ${p.serve_errors || 0} errores)</p></div>
-                      <div class="bg-gray-800/50 rounded-lg p-3 text-center"><p class="text-xs text-gray-400">Eficiencia Bloqueo</p><p class="text-lg font-bold text-white">${parseFloat(p.block_efficiency || 0).toFixed(1)}%</p><p class="text-xs text-gray-500">(${p.successful_blocks || 0}/${p.total_blocks || 0})</p></div>
+                    <div class="grid grid-cols-3 gap-3">
+                      <div class="bg-blue-500/10 rounded-lg p-3 text-center">
+                        <p class="text-xs text-gray-400 mb-1">Ataque</p>
+                        <p class="text-xl font-bold text-blue-500">${parseFloat(t.attack_efficiency || 0).toFixed(1)}%</p>
+                        <p class="text-xs text-gray-500">${t.total_attacks || 0} ataques</p>
+                      </div>
+                      <div class="bg-purple-500/10 rounded-lg p-3 text-center">
+                        <p class="text-xs text-gray-400 mb-1">Saque</p>
+                        <p class="text-xl font-bold text-purple-500">${parseFloat(t.serve_efficiency || 0).toFixed(1)}%</p>
+                        <p class="text-xs text-gray-500">${t.total_aces || 0} aces · ${t.total_serves || 0} saques</p>
+                      </div>
+                      <div class="bg-green-500/10 rounded-lg p-3 text-center">
+                        <p class="text-xs text-gray-400 mb-1">Bloqueo</p>
+                        <p class="text-xl font-bold text-green-500">${parseFloat(t.block_efficiency || 0).toFixed(1)}%</p>
+                        <p class="text-xs text-gray-500">${t.total_blocks || 0} bloqueos</p>
+                      </div>
                     </div>
-                    ${p.notes ? `<p class="text-sm text-gray-400 mt-3 italic">${p.notes}</p>` : ''}
                   </div>`).join('')}
               </div>
+
+
             </div>
 
             <!-- SURVEYS -->
@@ -535,7 +554,7 @@ const renderDashboard = async () => {
                           <div class="bg-green-500/10 px-2 py-1 rounded"><span class="text-green-500 font-bold">${parseFloat(p.block_efficiency || 0).toFixed(1)}%</span><br>Bloqueo</div>
                           <div class="bg-purple-500/10 px-2 py-1 rounded"><span class="text-purple-500 font-bold">${parseFloat(p.serve_efficiency || 0).toFixed(1)}%</span><br>Saque</div>
                         </div>
-                        ${user.role === 'admin' ? `<button onclick="window.showEditPlayerStats(${p.id}, ${p.attacks || 0}, ${p.blocks || 0}, ${p.serves || 0})" class="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-sm hover:bg-blue-500/20">Editar stats</button>` : ''}
+                        ${user.role === 'admin' ? `<button onclick="window.showEditPlayerStats(${p.id}, ${p.attacks || 0}, ${p.blocks || 0}, ${p.serves || 0}, ${p.digs || 0}, ${p.assists || 0}, ${p.aces || 0}, ${p.errors || 0})" class="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-sm hover:bg-blue-500/20">Editar stats</button>` : ''}
                       </div>
                     </div>
                   </div>`).join('')}
@@ -1194,6 +1213,7 @@ const loadAttendanceStatus = async () => {
       points_conceded: parseInt(getVal("match-points-against")) || 0,
       location: getVal("match-location") || null,
     };
+    let addedStats = false;
     if (user.role === 'admin') {
       const addStats = confirm("¿Deseas agregar estadísticas individuales de jugadores?");
       if (addStats) {
@@ -1204,15 +1224,21 @@ const loadAttendanceStatus = async () => {
             return;
           }
           matchData.player_stats = await (window as any).showBatchPlayerStats(players);
+          addedStats = true;
         } catch {
           showToast("Error al cargar jugadores", "error");
           return;
         }
       }
     }
+    try {
+      await saveMatchResult(matchData);
+    } catch (err: any) {
+      showToast(err.message || "Error al crear el partido", "error");
+      return;
+    }
     overlay.remove();
-    await saveMatchResult(matchData);
-    showToast("Partido creado con estadísticas");
+    showToast(addedStats ? "Partido creado con estadísticas" : "Partido creado");
     render();
   });
 };
@@ -1303,45 +1329,31 @@ const loadAttendanceStatus = async () => {
   }
 };
 
-(window as any).showEditPlayerStats = (playerId: number, attacks: number, blocks: number, serves: number) => {
+(window as any).showEditPlayerStats = (playerId: number, attacks: number, blocks: number, serves: number, digs: number, assists: number, aces: number, errors: number) => {
   showEditModal("Editar Estadísticas", [
     { label: "Ataques totales", value: attacks.toString(), id: "edit-attacks", type: "number" },
     { label: "Bloqueos totales", value: blocks.toString(), id: "edit-blocks", type: "number" },
-    { label: "Saque totales", value: serves.toString(), id: "edit-serves", type: "number" }
-  ], async (v) => { 
-    await updatePlayerStatsApi(playerId, { 
-      attacks: parseInt(v["edit-attacks"]), 
-      blocks: parseInt(v["edit-blocks"]), 
-      serves: parseInt(v["edit-serves"]) 
-    }); 
-    showToast("Estadísticas actualizadas"); 
-    render(); 
-  });
-};
-
-(window as any).showAddPerformance = () => {
-  showEditModal("Nuevo Registro de Rendimiento", [
-    { label: "ID del Equipo", value: "", id: "perf-team-id" },
-    { label: "Fecha", value: "", id: "perf-date", type: "date" },
-    { label: "Rendimiento en Campo (1-10)", value: "5", id: "perf-court", type: "number" },
-    { label: "Rendimiento en Saque (1-10)", value: "5", id: "perf-serve", type: "number" },
-    { label: "Rendimiento en Ataque (1-10)", value: "5", id: "perf-attack", type: "number" },
-    { label: "Rendimiento en Bloqueo (1-10)", value: "5", id: "perf-block", type: "number" },
-    { label: "Rendimiento en Defensa (1-10)", value: "5", id: "perf-defense", type: "number" },
-    { label: "Notas", value: "", id: "perf-notes" }
-  ], async (v) => { 
-    await createPerformance({ 
-      team_id: parseInt(v["perf-team-id"]), 
-      performance_date: v["perf-date"],
-      court_performance: parseInt(v["perf-court"]),
-      serve_performance: parseInt(v["perf-serve"]),
-      attack_performance: parseInt(v["perf-attack"]),
-      block_performance: parseInt(v["perf-block"]),
-      defense_performance: parseInt(v["perf-defense"]),
-      notes: v["perf-notes"]
-    }); 
-    showToast("Rendimiento registrado"); 
-    render(); 
+    { label: "Saques totales", value: serves.toString(), id: "edit-serves", type: "number" },
+    { label: "Defensas totales", value: digs.toString(), id: "edit-digs", type: "number" },
+    { label: "Asistencias totales", value: assists.toString(), id: "edit-assists", type: "number" },
+    { label: "Aces totales", value: aces.toString(), id: "edit-aces", type: "number" },
+    { label: "Errores totales", value: errors.toString(), id: "edit-errors", type: "number" }
+  ], async (v) => {
+    try {
+      await updatePlayerStatsApi(playerId, {
+        attacks: parseInt(v["edit-attacks"]),
+        blocks: parseInt(v["edit-blocks"]),
+        serves: parseInt(v["edit-serves"]),
+        digs: parseInt(v["edit-digs"]),
+        assists: parseInt(v["edit-assists"]),
+        aces: parseInt(v["edit-aces"]),
+        errors: parseInt(v["edit-errors"])
+      });
+      showToast("Estadísticas actualizadas");
+      render();
+    } catch (err: any) {
+      showToast(err.message || "Error al actualizar estadísticas", "error");
+    }
   });
 };
 
@@ -1417,6 +1429,112 @@ const loadAttendanceStatus = async () => {
   } catch (error: any) {
     showToast(error.message || "Error al cargar miembros", "error");
   }
+};
+
+(window as any).showPlayersOverview = () => {
+  const overlay = document.createElement("div");
+  overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+  const modal = document.createElement("div");
+  modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+  modal.innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-yellow-500">Jugadores</h3>
+      <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+    </div>
+    <div class="mb-4 flex items-center gap-2">
+      <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <p class="text-gray-400">Total: <span class="text-white font-bold">${globalPlayers.length}</span> jugadores</p>
+    </div>
+    <div class="space-y-3">
+      ${globalPlayers.length === 0 ? '<p class="text-gray-500 text-center py-6">No hay jugadores registrados</p>' : globalPlayers.map((p: any) => `
+        <div class="bg-gray-800/50 rounded-lg p-4 flex items-center justify-between hover:bg-gray-800 transition-all">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center text-black font-bold text-lg">${(p.name || '?').charAt(0).toUpperCase()}</div>
+            <div>
+              <p class="font-semibold text-white">${p.name || 'Sin nombre'}</p>
+              <p class="text-sm text-gray-400">${p.position || 'Sin posición'} · #${p.jersey_number || '?'} · ${p.team_name || 'Sin equipo'}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="flex gap-2 text-xs">
+              <span class="px-2 py-1 bg-blue-500/10 text-blue-500 rounded-md">Ataques: ${p.attacks || 0}</span>
+              <span class="px-2 py-1 bg-green-500/10 text-green-500 rounded-md">Bloqueos: ${p.blocks || 0}</span>
+              <span class="px-2 py-1 bg-purple-500/10 text-purple-500 rounded-md">Saque: ${p.serves || 0}</span>
+            </div>
+            <p class="text-xs text-yellow-500 mt-1">🔥 Racha: ${p.attendance_streak || 0} días</p>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+};
+
+(window as any).showTrainingsOverview = () => {
+  const overlay = document.createElement("div");
+  overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+  const modal = document.createElement("div");
+  modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+  modal.innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-yellow-500">Entrenamientos</h3>
+      <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+    </div>
+    <div class="mb-4 flex items-center gap-2">
+      <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <p class="text-gray-400">Total: <span class="text-white font-bold">${globalTrainings.length}</span> entrenamientos</p>
+    </div>
+    <div class="space-y-3">
+      ${globalTrainings.length === 0 ? '<p class="text-gray-500 text-center py-6">No hay entrenamientos registrados</p>' : globalTrainings.map((t: any) => `
+        <div class="bg-gray-800/50 rounded-lg p-4 flex items-center justify-between hover:bg-gray-800 transition-all">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+            <div>
+              <p class="font-semibold text-white">${t.title || 'Sin título'}</p>
+              <p class="text-sm text-gray-400">${formatDate(t.date)}</p>
+            </div>
+          </div>
+          ${t.description ? `<p class="text-sm text-gray-500">${t.description}</p>` : ''}
+        </div>`).join('')}
+    </div>`;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+};
+
+(window as any).showMatchesOverview = () => {
+  const overlay = document.createElement("div");
+  overlay.className = "fixed inset-0 bg-black/70 flex items-center justify-center z-50";
+  const modal = document.createElement("div");
+  modal.className = "bg-gray-900 border border-yellow-500/30 rounded-xl p-8 w-full max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto";
+  modal.innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="text-xl font-bold text-yellow-500">Partidos</h3>
+      <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white">✕</button>
+    </div>
+    <div class="mb-4 flex items-center gap-2">
+      <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"/></svg>
+      <p class="text-gray-400">Total: <span class="text-white font-bold">${globalMatches ? globalMatches.length : 0}</span> partidos</p>
+    </div>
+    <div class="space-y-3">
+      ${(!globalMatches || globalMatches.length === 0) ? '<p class="text-gray-500 text-center py-6">No hay partidos registrados</p>' : globalMatches.map((m: any) => `
+        <div class="bg-gray-800/50 rounded-lg p-4 flex items-center justify-between hover:bg-gray-800 transition-all">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center"><svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 00-1-1zm-6 12V9a1 1 0 012 0v6a1 1 0 01-2 0zm4 0V9a1 1 0 012 0v6a1 1 0 01-2 0z"/></svg></div>
+            <div>
+              <p class="font-semibold text-white">${m.team_name || 'Equipo'} vs ${m.opponent}</p>
+              <p class="text-sm text-gray-400">${formatDate(m.match_date)} · ${m.location || 'Sin ubicación'}</p>
+            </div>
+          </div>
+          <div class="text-right flex items-center gap-2">
+            <span class="px-3 py-1 rounded-lg text-xs font-bold ${m.result === 'win' ? 'bg-green-500/20 text-green-500' : m.result === 'loss' ? 'bg-red-500/20 text-red-500' : 'bg-gray-500/20 text-gray-400'}">${m.result === 'win' ? 'Victoria' : m.result === 'loss' ? 'Derrota' : 'Empate'}</span>
+            <p class="text-xs text-gray-400">${m.sets_won || 0}-${m.sets_lost || 0}</p>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
 };
 
 // ==================== SEARCH ====================

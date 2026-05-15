@@ -14,7 +14,10 @@ import { pool } from "../../config/db";
 export const getPlayers = async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.query(`
-      SELECT p.*, u.name, u.email, u.phone, t.name as team_name
+      SELECT p.*, u.name, u.email, u.phone, t.name as team_name,
+        CASE WHEN p.attacks > 0 THEN ROUND(((p.attacks - p.errors) / p.attacks) * 100, 1) ELSE 0 END as attack_efficiency,
+        CASE WHEN p.blocks > 0 THEN ROUND((p.blocks / (p.blocks + p.errors)) * 100, 1) ELSE 0 END as block_efficiency,
+        CASE WHEN p.serves > 0 THEN ROUND(((p.aces - p.errors) / p.serves) * 100, 1) ELSE 0 END as serve_efficiency
       FROM jugadores p 
       JOIN usuarios u ON p.user_id = u.id 
       LEFT JOIN equipos t ON p.team_id = t.id
@@ -47,7 +50,10 @@ export const getPlayers = async (req: Request, res: Response) => {
 export const getPlayerById = async (req: Request, res: Response) => {
   try {
     const [rows]: any = await pool.query(`
-      SELECT p.*, u.name, u.email, u.phone, t.name as team_name
+      SELECT p.*, u.name, u.email, u.phone, t.name as team_name,
+        CASE WHEN p.attacks > 0 THEN ROUND(((p.attacks - p.errors) / p.attacks) * 100, 1) ELSE 0 END as attack_efficiency,
+        CASE WHEN p.blocks > 0 THEN ROUND((p.blocks / (p.blocks + p.errors)) * 100, 1) ELSE 0 END as block_efficiency,
+        CASE WHEN p.serves > 0 THEN ROUND(((p.aces - p.errors) / p.serves) * 100, 1) ELSE 0 END as serve_efficiency
       FROM jugadores p 
       JOIN usuarios u ON p.user_id = u.id 
       LEFT JOIN equipos t ON p.team_id = t.id
@@ -81,7 +87,10 @@ export const getPlayerById = async (req: Request, res: Response) => {
 export const getPlayerByUserId = async (req: Request, res: Response) => {
   try {
     const [rows]: any = await pool.query(`
-      SELECT p.*, u.name, u.email, u.phone, t.name as team_name
+      SELECT p.*, u.name, u.email, u.phone, t.name as team_name,
+        CASE WHEN p.attacks > 0 THEN ROUND(((p.attacks - p.errors) / p.attacks) * 100, 1) ELSE 0 END as attack_efficiency,
+        CASE WHEN p.blocks > 0 THEN ROUND((p.blocks / (p.blocks + p.errors)) * 100, 1) ELSE 0 END as block_efficiency,
+        CASE WHEN p.serves > 0 THEN ROUND(((p.aces - p.errors) / p.serves) * 100, 1) ELSE 0 END as serve_efficiency
       FROM jugadores p 
       JOIN usuarios u ON p.user_id = u.id 
       LEFT JOIN equipos t ON p.team_id = t.id
@@ -166,16 +175,24 @@ export const createPlayer = async (req: Request, res: Response) => {
  *                 type: integer
  *               serves:
  *                 type: integer
+ *               digs:
+ *                 type: integer
+ *               assists:
+ *                 type: integer
+ *               aces:
+ *                 type: integer
+ *               errors:
+ *                 type: integer
  *     responses:
  *       200:
  *         description: Estadísticas actualizadas
  */
 export const updatePlayerStats = async (req: Request, res: Response) => {
   try {
-    const { attacks, blocks, serves } = req.body;
+    const { attacks, blocks, serves, digs, assists, aces, errors } = req.body;
     await pool.query(
-      "UPDATE jugadores SET attacks = ?, blocks = ?, serves = ? WHERE id = ?",
-      [attacks, blocks, serves, req.params.id]
+      `UPDATE jugadores SET attacks = ?, blocks = ?, serves = ?, digs = ?, assists = ?, aces = ?, errors = ? WHERE id = ?`,
+      [attacks || 0, blocks || 0, serves || 0, digs || 0, assists || 0, aces || 0, errors || 0, req.params.id]
     );
     res.json({ message: "Estadísticas actualizadas" });
   } catch (error) {

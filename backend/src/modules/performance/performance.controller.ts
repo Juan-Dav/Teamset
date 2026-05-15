@@ -139,6 +139,16 @@ export const createPerformance = async (req: Request, res: Response) => {
  *       200:
  *         description: Rendimiento actualizado
  */
+export const getTeamStatsPerformance = async (req: Request, res: Response) => {
+  try {
+    const [rows]: any = await pool.query("CALL sp_calcular_rendimiento_equipo()");
+    const performance = rows?.[0] ?? rows ?? [];
+    res.json(performance);
+  } catch (error) {
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+};
+
 export const updatePerformance = async (req: Request, res: Response) => {
   try {
     const { performance_date, court_performance, serve_performance, attack_performance, block_performance, defense_performance, notes } = req.body;

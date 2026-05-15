@@ -22,9 +22,28 @@ export const setup = async () => {
     await connection.query("DROP TABLE IF EXISTS encuestas_entrenamiento");
     await connection.query("SET FOREIGN_KEY_CHECKS = 1");
 
-    console.log("Ejecutando schema.sql...");
+    console.log("Ejecutando schema.sql (tablas)...");
     const schema = fs.readFileSync("./database/schema.sql", "utf8");
-    await connection.query(schema);
+
+    // Extraer solo la parte de tablas (todo antes de DELIMITER o procedimientos)
+    const tablePart = schema.split(/^-- ={5,}/m)[0];
+    if (tablePart.trim()) {
+      await connection.query(tablePart);
+    }
+
+    console.log("Ejecutando procedures.sql (procedimientos almacenados)...");
+    const proceduresPath = "./database/procedures.sql";
+    if (fs.existsSync(proceduresPath)) {
+      const procSQL = fs.readFileSync(proceduresPath, "utf8");
+      // Ejecutar cada procedimiento por separado (sin DELIMITER)
+      const procs = procSQL.split(/(?=CREATE PROCEDURE)/);
+      for (const proc of procs) {
+        const trimmed = proc.trim();
+        if (trimmed) {
+          await connection.query(trimmed);
+        }
+      }
+    }
 
     console.log("Asegurando columnas faltantes...");
     await connection.query("ALTER TABLE entrenamientos ADD COLUMN IF NOT EXISTS survey_question TEXT");

@@ -240,6 +240,11 @@ export const getMatchPlayerStats = async (matchId: number) => {
 
 // ==================== PERFORMANCE ====================
 
+export const getTeamPerformanceFromStats = async () => {
+  const res = await fetch(`${API_URL}/performance/team-stats`);
+  return handleResponse(res);
+};
+
 export const getPerformance = async () => {
   const res = await fetch(`${API_URL}/performance`);
   return handleResponse(res);
